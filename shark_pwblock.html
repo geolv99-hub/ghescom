@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>『鯊魚來了』基本版程式積木</title>
+    <style>
+        /* 基本重置與字體設定 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f3f4f6;
+            margin: 0;
+            color: #333;
+        }
+
+        /* 內容容器樣式 */
+        .container {
+            background: white;
+            padding: 2.5rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transition: all 0.3s ease;
+        }
+
+        /* 標題與文字 */
+        h2 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        
+        .hint {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        /* 輸入框樣式 */
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="password"]:focus {
+            border-color: #3b82f6;
+        }
+
+        /* 按鈕樣式 */
+        button {
+            width: 100%;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* 錯誤訊息樣式 */
+        .error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            display: none;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* 隱藏內容區塊預設隱藏 */
+        #secret-content {
+            display: none;
+            max-width: 500px;
+        }
+
+        /* 隱藏圖片樣式 */
+        .secret-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .lock-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* 錯誤時的震動動畫 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+        }
+    </style>
+</head>
+<body style="flex-direction: column; padding: 2rem 0;">
+
+    <!-- 登入解鎖畫面 -->
+    <div id="login-screen" class="container">
+        <div class="lock-icon">🔒</div>
+        <h2>請輸入密碼</h2>
+        <p class="hint">輸入正確的密碼才能看到鯊魚來了基本版程式積木</p>
+        
+        <input type="password" id="password-input" placeholder="請在此輸入密碼...">
+        <button onclick="checkPassword()">解鎖內容</button>
+        
+        <p id="error-message" class="error">❌ 密碼錯誤，請再試一次！</p>
+    </div>
+
+    <!-- 隱藏的內容畫面 -->
+    <div id="secret-content" class="container">
+        <div class="lock-icon">🔓</div>
+        <h2>🎉 解鎖成功！</h2>
+        <p>恭喜你發現了隱藏的區域！</p>
+        
+        <!-- 圖片網址動態載入 -->
+        <div id="dynamic-image-container"></div>
+        
+        <br>
+        <button onclick="lockAgain()" style="background-color: #6b7280; margin-top: 1rem;">重新上鎖</button>
+    </div>
+
+    <script>
+        // 
+        const ENCODED_PASSWORD = "Z2hlcw=="; 
+        
+        // 
+        const ENCODED_IMAGE_URLS = [
+            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMS5wbmc=", // 
+            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMi5wbmc="  //  
+        ];
+
+        // 檢查密碼的函數
+        function checkPassword() {
+            const inputField = document.getElementById('password-input');
+            const errorMessage = document.getElementById('error-message');
+            const loginScreen = document.getElementById('login-screen');
+            const secretContent = document.getElementById('secret-content');
+            const imageContainer = document.getElementById('dynamic-image-container');
+
+            try {
+                // 將
+                const inputEncoded = btoa(encodeURIComponent(inputField.value));
+
+                // 判斷編碼後的值是否相符
+                if (inputEncoded === ENCODED_PASSWORD) {
+                    // 密碼正確：顯示內容
+                    loginScreen.style.display = 'none';
+                    secretContent.style.display = 'block';
+                    errorMessage.style.display = 'none';
+                    
+                    // 動態解碼多張圖片網址並顯示
+                    let imagesHtml = '';
+                    for (let i = 0; i < ENCODED_IMAGE_URLS.length; i++) {
+                        const decodedUrl = atob(ENCODED_IMAGE_URLS[i]);
+                        imagesHtml += `<img src="${decodedUrl}" alt="隱藏圖片 ${i + 1}" class="secret-image" onerror="this.src='https://via.placeholder.com/600x400?text=Image+Not+Found'">`;
+                    }
+                    imageContainer.innerHTML = imagesHtml;
+                } else {
+                    // 密碼錯誤
+                    showError(inputField, errorMessage);
+                }
+            } catch (e) {
+                // 例外錯誤處理 (例如輸入特殊無效字元)
+                showError(inputField, errorMessage);
+            }
+        }
+
+        // 顯示錯誤的輔助函數
+        function showError(inputField, errorMessage) {
+            errorMessage.style.display = 'block';
+            inputField.value = '';
+            inputField.focus();
+            
+            // 重新觸發震動動畫
+            errorMessage.style.animation = 'none';
+            errorMessage.offsetHeight; /* 觸發 reflow */
+            errorMessage.style.animation = 'shake 0.4s ease-in-out';
+        }
+
+        // 重新上鎖的函數
+        function lockAgain() {
+            document.getElementById('password-input').value = '';
+            document.getElementById('login-screen').style.display = 'block';
+            document.getElementById('secret-content').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            // 清空圖片避免殘留
+            document.getElementById('dynamic-image-container').innerHTML = '';
+        }
+
+        // 按下 Enter 鍵觸發解鎖
+        document.getElementById('password-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+    </script>
+</body>
+</html>
