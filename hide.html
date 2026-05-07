@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>頁面跳轉中...</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+    </style>
+    <script>
+        // 1. 將你的目標網址填入下方變數中
+        // 
+        const encodedURL = "aHR0cDovLzEwLjE5Mi4zNi4xMDY6ODA4MC8=";
+
+        function redirect() {
+            try {
+                // 2. 使用 atob() 解碼 Base64 字串
+                const decodedURL = atob(encodedURL);
+                
+                // 3. 使用 window.location.replace 進行轉址
+                // (使用 replace 可以讓使用者按「上一頁」時不會一直卡在轉址頁面)
+                window.location.replace(decodedURL);
+            } catch (error) {
+                // 如果 Base64 解析失敗，顯示錯誤訊息
+                document.getElementById('status').innerText = "發生錯誤：無法解析目標網址。";
+                console.error("Base64 解碼失敗:", error);
+            }
+        }
+
+        // 當網頁載入完成時，立刻觸發轉址
+        window.onload = redirect;
+    </script>
+</head>
+<body>
+    <div id="status">網頁轉址中，請稍候...</div>
+    
+    <noscript>
+        <p>您的瀏覽器目前停用 JavaScript，無法自動轉址。請啟用 JavaScript 以繼續。</p>
+    </noscript>
+</body>
+</html>
