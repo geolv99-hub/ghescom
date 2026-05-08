@@ -41,8 +41,8 @@
             margin-bottom: 1.5rem;
         }
 
-        /* 輸入框樣式 */
-        input[type="password"] {
+        /* 輸入框樣式 (修改為 type="text") */
+        input[type="text"] {
             width: 100%;
             padding: 0.75rem 1rem;
             margin-bottom: 1rem;
@@ -54,7 +54,7 @@
             transition: border-color 0.2s;
         }
 
-        input[type="password"]:focus {
+        input[type="text"]:focus {
             border-color: #3b82f6;
         }
 
@@ -120,25 +120,22 @@
 </head>
 <body style="flex-direction: column; padding: 2rem 0;">
 
-    <!-- 登入解鎖畫面 -->
     <div id="login-screen" class="container">
         <div class="lock-icon">🔒</div>
         <h2>請輸入密碼</h2>
         <p class="hint">輸入正確的密碼才能看到鯊魚來了基本版程式積木</p>
         
-        <input type="password" id="password-input" placeholder="請在此輸入密碼...">
+        <input type="text" id="password-input" placeholder="請在此輸入密碼...">
         <button onclick="checkPassword()">解鎖內容</button>
         
         <p id="error-message" class="error">❌ 密碼錯誤，請再試一次！</p>
     </div>
 
-    <!-- 隱藏的內容畫面 -->
     <div id="secret-content" class="container">
         <div class="lock-icon">🔓</div>
         <h2>🎉 解鎖成功！</h2>
         <p>恭喜你發現了隱藏的區域！</p>
         
-        <!-- 圖片網址動態載入 -->
         <div id="dynamic-image-container"></div>
         
         <br>
