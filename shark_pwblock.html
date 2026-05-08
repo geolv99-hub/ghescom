@@ -41,7 +41,7 @@
             margin-bottom: 1.5rem;
         }
 
-        /* 輸入框樣式 (修改為 type="text") */
+        /* 輸入框樣式 (維持 text，以便我們用 JS 控制顯示) */
         input[type="text"] {
             width: 100%;
             padding: 0.75rem 1rem;
@@ -49,7 +49,8 @@
             border: 2px solid #e5e7eb;
             border-radius: 0.5rem;
             box-sizing: border-box;
-            font-size: 1rem;
+            font-size: 1.2rem; /* 字體稍微調大，讓黑點更清楚 */
+            letter-spacing: 2px; /* 增加字距 */
             outline: none;
             transition: border-color 0.2s;
         }
@@ -125,7 +126,7 @@
         <h2>請輸入密碼</h2>
         <p class="hint">輸入正確的密碼才能看到鯊魚來了基本版程式積木</p>
         
-        <input type="text" id="password-input" placeholder="請在此輸入密碼...">
+        <input type="text" id="password-input" placeholder="請在此輸入密碼..." autocomplete="off">
         <button onclick="checkPassword()">解鎖內容</button>
         
         <p id="error-message" class="error">❌ 密碼錯誤，請再試一次！</p>
@@ -143,35 +144,66 @@
     </div>
 
     <script>
-        // 
         const ENCODED_PASSWORD = "R0hFUw=="; 
-        
-        // 
         const ENCODED_IMAGE_URLS = [
-            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMS5wbmc=", // 
-            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMi5wbmc="  //  
+            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMS5wbmc=", 
+            "aHR0cHM6Ly9nZW9sdjk5LWh1Yi5naXRodWIuaW8vZ2hlc2NvbS9waWMvc2hhcmswMi5wbmc="  
         ];
+
+        // --- 新增：用來記錄真實密碼與控制計時器的變數 ---
+        let realPassword = ""; 
+        let hideTimer = null;
+        const inputField = document.getElementById('password-input');
+
+        // 監聽使用者的輸入事件，達成「延遲 1 秒後變黑點」的效果
+        inputField.addEventListener('input', function(e) {
+            let currentDisplay = this.value;
+
+            // 判斷使用者是輸入還是刪除 (Backspace)
+            if (currentDisplay.length > realPassword.length) {
+                // 新增：抓出畫面上最新輸入的字，加進真實密碼中
+                let newChars = currentDisplay.substring(realPassword.length);
+                realPassword += newChars;
+            } else {
+                // 刪除：配合畫面長度，裁切真實密碼
+                realPassword = realPassword.substring(0, currentDisplay.length);
+            }
+
+            // 處理畫面顯示
+            if (realPassword.length > 0) {
+                // 將前面全部變成黑點 '•'，只保留最後一個字元顯示明文
+                let maskedText = '•'.repeat(realPassword.length - 1) + realPassword.slice(-1);
+                this.value = maskedText;
+
+                // 每次輸入就清除前一次的計時器
+                clearTimeout(hideTimer);
+                
+                // 設定 1 秒 (1000毫秒) 後，將全部文字變成黑點
+                hideTimer = setTimeout(() => {
+                    this.value = '•'.repeat(realPassword.length);
+                }, 1000);
+            } else {
+                this.value = "";
+            }
+        });
 
         // 檢查密碼的函數
         function checkPassword() {
-            const inputField = document.getElementById('password-input');
             const errorMessage = document.getElementById('error-message');
             const loginScreen = document.getElementById('login-screen');
             const secretContent = document.getElementById('secret-content');
             const imageContainer = document.getElementById('dynamic-image-container');
 
             try {
-                // 將
-                const inputEncoded = btoa(encodeURIComponent(inputField.value));
+                // 注意：這裡改為檢查背後記錄的 "realPassword"，而不是輸入框裡面的黑點
+                const inputEncoded = btoa(encodeURIComponent(realPassword));
 
-                // 判斷編碼後的值是否相符
                 if (inputEncoded === ENCODED_PASSWORD) {
-                    // 密碼正確：顯示內容
+                    // 密碼正確
                     loginScreen.style.display = 'none';
                     secretContent.style.display = 'block';
                     errorMessage.style.display = 'none';
                     
-                    // 動態解碼多張圖片網址並顯示
                     let imagesHtml = '';
                     for (let i = 0; i < ENCODED_IMAGE_URLS.length; i++) {
                         const decodedUrl = atob(ENCODED_IMAGE_URLS[i]);
@@ -180,18 +212,20 @@
                     imageContainer.innerHTML = imagesHtml;
                 } else {
                     // 密碼錯誤
-                    showError(inputField, errorMessage);
+                    showError();
                 }
             } catch (e) {
-                // 例外錯誤處理 (例如輸入特殊無效字元)
-                showError(inputField, errorMessage);
+                showError();
             }
         }
 
         // 顯示錯誤的輔助函數
-        function showError(inputField, errorMessage) {
+        function showError() {
+            const errorMessage = document.getElementById('error-message');
+            
             errorMessage.style.display = 'block';
             inputField.value = '';
+            realPassword = ''; // 發生錯誤時，記得也要清空真實密碼的記錄
             inputField.focus();
             
             // 重新觸發震動動畫
@@ -202,16 +236,16 @@
 
         // 重新上鎖的函數
         function lockAgain() {
-            document.getElementById('password-input').value = '';
+            inputField.value = '';
+            realPassword = ''; // 重新上鎖時，清空真實密碼
             document.getElementById('login-screen').style.display = 'block';
             document.getElementById('secret-content').style.display = 'none';
             document.getElementById('error-message').style.display = 'none';
-            // 清空圖片避免殘留
             document.getElementById('dynamic-image-container').innerHTML = '';
         }
 
         // 按下 Enter 鍵觸發解鎖
-        document.getElementById('password-input').addEventListener('keypress', function (e) {
+        inputField.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 checkPassword();
             }
