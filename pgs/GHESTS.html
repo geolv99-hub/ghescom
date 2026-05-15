@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 語音生成與WAV音檔下載</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, '微軟正黑體';
+            background-color: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: none;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        select, input[type="range"] {
+            flex: 1;
+            margin-left: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .record-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 10px;
+        }
+        .record-btn:hover {
+            background-color: #cc0000;
+        }
+        .record-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status-msg {
+            text-align: center;
+            font-weight: bold;
+            color: #d9534f;
+            margin-bottom: 15px;
+            height: 20px;
+        }
+        #result-section {
+            display: none;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 2px dashed #eee;
+        }
+        audio {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .download-btn {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            width: 80%;
+        }
+        .download-btn:hover {
+            background-color: #45a049;
+        }
+        .important-note {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffecb5;
+            padding: 10px;
+            font-size: 13px;
+            color: #856404;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎙️ AI 語音轉WAV音檔</h1>
+    
+    <div class="important-note">
+        <strong>⚠️ 必看秘訣：</strong> 按下錄音後，請務必選擇 <b>「視窗」-AI 語音生成與WAV音檔下載</b>，並且一定要打勾最下方的 <b>「分享分頁音訊」</b>！
+    </div>
+
+    <textarea id="text-input" placeholder="請輸入要讓電腦唸出來的文字..."></textarea>
+    
+    <div class="control-group">
+        <label for="voice-select">聲音：</label>
+        <select id="voice-select"></select>
+    </div>
+    
+    <div class="control-group">
+        <label for="rate">語速：</label>
+        <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+    </div>
+
+    <button id="start-btn" class="record-btn">🔴 開始錄音並播放</button>
+    <div id="status-msg"></div>
+
+    <div id="result-section">
+        <p>✅ 轉換完成！</p>
+        <audio id="audio-playback" controls></audio>
+        <a id="download-link" class="download-btn" href="#" download="AI_Voice.wav">📥 下載 WAV 音檔</a>
+    </div>
+</div>
+
+<script>
+    const synth = window.speechSynthesis;
+    const voiceSelect = document.getElementById('voice-select');
+    const startBtn = document.getElementById('start-btn');
+    const textInput = document.getElementById('text-input');
+    const rateInput = document.getElementById('rate');
+    const statusMsg = document.getElementById('status-msg');
+    const resultSection = document.getElementById('result-section');
+    const audioPlayback = document.getElementById('audio-playback');
+    const downloadLink = document.getElementById('download-link');
+
+    let voices = [];
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    // 載入聲音清單
+    function populateVoiceList() {
+        voices = synth.getVoices();
+        voiceSelect.innerHTML = '';
+        const filteredVoices = voices.filter(voice => voice.lang.includes('zh') || voice.lang.includes('en'));
+        
+        filteredVoices.forEach((voice) => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-name', voice.name);
+            if(voice.lang === 'zh-TW' || voice.lang === 'zh-HK') option.selected = true;
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    // 將 WebM 轉換為簡報支援的 WAV 格式的魔法函數
+    async function convertToWav(blob) {
+        statusMsg.textContent = "⚙️ 正在轉檔為簡報格式，請稍候...";
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        const numOfChan = audioBuffer.numberOfChannels;
+        const length = audioBuffer.length * numOfChan * 2 + 44;
+        const buffer = new ArrayBuffer(length);
+        const view = new DataView(buffer);
+        let pos = 0;
+
+        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+        // 寫入 WAV 標頭
+        setUint32(0x46464952); // "RIFF"
+        setUint32(length - 8);
+        setUint32(0x45564157); // "WAVE"
+        setUint32(0x20746d66); // "fmt "
+        setUint32(16);
+        setUint16(1);
+        setUint16(numOfChan);
+        setUint32(audioBuffer.sampleRate);
+        setUint32(audioBuffer.sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2);
+        setUint16(16);
+        setUint32(0x61746164); // "data"
+        setUint32(length - pos - 4);
+
+        // 寫入音訊數據
+        let offset = 0;
+        const channels = [];
+        for (let i = 0; i < numOfChan; i++) {
+            channels.push(audioBuffer.getChannelData(i));
+        }
+
+        while (offset < audioBuffer.length) {
+            for (let i = 0; i < numOfChan; i++) {
+                let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                view.setInt16(pos, sample, true);
+                pos += 2;
+            }
+            offset++;
+        }
+        return new Blob([buffer], { type: "audio/wav" });
+    }
+
+    startBtn.addEventListener('click', async () => {
+        const text = textInput.value.trim();
+        if (!text) {
+            alert("請先輸入文字喔！");
+            return;
+        }
+
+        recordedChunks = [];
+        resultSection.style.display = 'none';
+
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: { displaySurface: "browser" },
+                audio: true
+            });
+
+            if (stream.getAudioTracks().length === 0) {
+                alert("❌ 錄音失敗！\n您忘記勾選「分享分頁音訊」了，請重新操作一次！");
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
+
+            const audioStream = new MediaStream(stream.getAudioTracks());
+            mediaRecorder = new MediaRecorder(audioStream);
+
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = async function() {
+                // 原本的 WebM 檔案
+                const webmBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+                
+                // 呼叫魔法函數轉成 WAV
+                const wavBlob = await convertToWav(webmBlob);
+                const audioURL = URL.createObjectURL(wavBlob);
+                
+                audioPlayback.src = audioURL;
+                downloadLink.href = audioURL;
+                resultSection.style.display = 'block';
+                statusMsg.textContent = "";
+                startBtn.disabled = false;
+                startBtn.textContent = "🔴 重新錄音";
+
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            statusMsg.textContent = "🎙️ 正在錄音並播放中，請稍候...";
+            startBtn.disabled = true;
+            startBtn.textContent = "錄製中...";
+
+            const utterThis = new SpeechSynthesisUtterance(text);
+            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].name === selectedOption) {
+                    utterThis.voice = voices[i];
+                    break;
+                }
+            }
+            utterThis.rate = rateInput.value;
+
+            utterThis.onend = function() {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            };
+
+            synth.speak(utterThis);
+
+        } catch (err) {
+            console.error(err);
+            alert("已取消錄音，或您的瀏覽器不支援此功能。");
+        }
+    });
+</script>
+
+</body>
+</html>
