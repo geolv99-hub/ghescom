@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>全能閱讀器 (純淨網頁版)</title>
+    <!-- 載入 App 設定檔 -->
+        <link rel="manifest" href="manifest.json">
+
+        <!-- 註冊 Service Worker -->
+        <script>
+  	if ('serviceWorker' in navigator) {
+    	     window.addEventListener('load', () => {
+      	         navigator.serviceWorker.register('sw.js').then(registration => {
+        	console.log('離線模式已啟動！');
+              });
+            });
+          }
+        </script>
+        <!-- 如果您想確保隨時可用，可以將這兩行改回線上 CDN，目前維持讀取您資料夾內的檔案 -->
+    <script src="jszip.min.js"></script>
+    <script src="epub.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #ffffff; display: flex; flex-direction: column; height: 100vh; transition: background-color 0.3s ease; overflow: hidden; }
+        
+        .header { background-color: #333; color: white; padding: 10px 15px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; font-size: 13px; flex-shrink: 0; max-height: 50vh; overflow-y: auto; }
+        
+        .top-bar { display: flex; width: 100%; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .settings { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; }
+        
+        .group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-right: 1px solid #666; padding-right: 10px; }
+        .group:last-child { border-right: none; padding-right: 0; }
+        
+        .settings input[type="color"] { border: none; width: 26px; height: 26px; padding: 0; cursor: pointer; background: none; vertical-align: middle; }
+        .settings input[type="range"] { vertical-align: middle; width: 70px; }
+        .settings select, .settings input[type="text"], .settings input[type="number"] { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 100px; }
+        
+        .btn, .file-label { padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; background-color: #555; color: white; font-size: 13px; display: inline-block; white-space: nowrap; transition: background-color 0.2s; }
+        .btn:hover, .file-label:hover { background-color: #777; }
+        input[type="file"] { display: none; }
+        
+        #toc-select { max-width: 120px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; display: none; }
+        #page-info-container { display: none; align-items: center; gap: 5px; white-space: nowrap; }
+        
+        #chunk-input::-webkit-outer-spin-button, #chunk-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #chunk-input { -moz-appearance: textfield; width: 40px; text-align: center; background-color: #444; color: white; border: 1px solid #666; margin: 0 2px; }
+        
+        .chunk-btn { background: #555; color: white; border: 1px solid #666; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .chunk-btn:hover { background: #777; }
+
+        .search-group { display: flex; align-items: center; gap: 5px; }
+        #search-input { width: 100px; background-color: #444; color: white; border: 1px solid #666; }
+        #search-info { display: none; align-items: center; gap: 5px; font-size: 12px; color: #ffd700; background: #444; padding: 2px 8px; border-radius: 12px; }
+        
+        #viewer { flex-grow: 1; width: 100%; max-width: 900px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; position: relative; transition: background-color 0.3s ease; }
+        #txt-container { width: 100%; height: 100%; padding: 20px 25px; box-sizing: border-box; overflow-y: auto; scroll-behavior: smooth; }
+        #txt-container p { white-space: pre-wrap; margin-top: 0; word-break: break-all; }
+        .loading-msg { padding: 50px; text-align: center; font-size: 16px; color: #666; font-weight: bold; }
+        
+        @media (max-width: 600px) {
+            .group { border-right: none; padding-right: 0; border-bottom: 1px solid #555; padding-bottom: 5px; width: 100%; justify-content: space-between; }
+            .group:last-child { border-bottom: none; }
+            #txt-container { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="top-bar">
+            <button class="btn" id="toggle-settings-btn">⚙️ 隱藏設定</button>
+            <div class="controls">
+                <select id="toc-select"><option value="" disabled selected>📖 目錄</option></select>
+                <span id="page-info-container">
+                    第 <button id="btn-prev-chunk" class="chunk-btn">▲</button>
+                    <input type="number" id="chunk-input" min="1">
+                    <button id="btn-next-chunk" class="chunk-btn">▼</button> / <span id="total-chunks">0</span> <span id="unit-text">章</span>
+                </span>
+                <button class="btn" id="prev">上一頁</button>
+                <button class="btn" id="next">下一頁</button>
+            </div>
+        </div>
+
+        <div class="settings" id="settings-panel">
+            <div class="group">
+                <label class="file-label">📖 開啟 <input type="file" id="book-file" accept=".epub, .txt"></label>
+                <button class="btn" id="export-btn">儲存進度</button>
+                <label class="file-label">讀取進度 <input type="file" id="import-file" accept=".json"></label>
+            </div>
+            
+            <div class="group">
+                <label>編碼: <select id="encoding-select"><option value="utf-8">UTF-8</option><option value="big5">Big5</option><option value="gbk">GBK</option><option value="utf-16le">UTF-16LE</option></select></label>
+                <label>模式: <select id="split-mode"><option value="chapter">智慧章節</option><option value="fixed">固定字數</option></select></label>
+            </div>
+
+            <div class="group">
+                <label>字體: <select id="font-family"><option value='"微軟正黑體", "Microsoft JhengHei", sans-serif'>微軟正黑體</option><option value='"標楷體", "DFKai-SB", "BiauKai", serif'>標楷體</option><option value='"PingFang TC", "黑體-繁", sans-serif'>蘋果黑體</option><option value='sans-serif'>系統預設</option></select></label>
+                <label><input type="checkbox" id="bold-text"> 粗體</label>
+            </div>
+
+            <div class="group">
+                <label>背景: <input type="color" id="bg-color" value="#ffffff"></label>
+                <label>文字: <input type="color" id="text-color" value="#333333"></label>
+                <label>字級: <input type="range" id="font-size" min="80" max="300" value="100" step="10"></label>
+            </div>
+            
+            <div class="group">
+                <label>行距: <input type="range" id="line-height" min="1" max="3" value="1.8" step="0.1"></label>
+                <label>段距: <input type="range" id="para-spacing" min="0" max="50" value="15" step="5"></label>
+            </div>
+
+            <div class="group search-group">
+                <input type="text" id="search-input" placeholder="全文搜尋...">
+                <button class="btn" id="btn-search">🔍</button>
+                <span id="search-info">
+                    <span id="search-current">0</span>/<span id="search-total">0</span>
+                    <button class="chunk-btn" id="btn-search-prev">▲</button>
+                    <button class="chunk-btn" id="btn-search-next">▼</button>
+                    <button class="chunk-btn" id="btn-search-close">✖</button>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewer"></div>
+
+    <script>
+        let book = null;
+        let rendition = null;
+        let currentMode = null; 
+
+        let txtChunks = [];
+        let currentTxtIndex = 0;
+        let rawFileBuffer = null; 
+        let currentFileName = ""; 
+        let txtRestoreScrollTop = 0; 
+        let txtScrollTimeout = null; 
+        
+        let searchQuery = "";
+        let searchResults = [];
+        let currentSearchIndex = -1;
+
+        const fileInput = document.getElementById('book-file');
+        const exportBtn = document.getElementById('export-btn');
+        const importFile = document.getElementById('import-file');
+        const encodingSelect = document.getElementById('encoding-select');
+        const splitModeSelect = document.getElementById('split-mode');
+        const prevBtn = document.getElementById('prev');
+        const nextBtn = document.getElementById('next');
+        const bgColorInput = document.getElementById('bg-color');
+        const textColorInput = document.getElementById('text-color');
+        const fontSizeInput = document.getElementById('font-size');
+        const fontFamilySelect = document.getElementById('font-family');
+        const boldTextCheckbox = document.getElementById('bold-text');
+        
+        const lineHeightInput = document.getElementById('line-height');
+        const paraSpacingInput = document.getElementById('para-spacing');
+        
+        const tocSelect = document.getElementById('toc-select');
+        const pageInfoContainer = document.getElementById('page-info-container');
+        const chunkInput = document.getElementById('chunk-input');
+        const btnPrevChunk = document.getElementById('btn-prev-chunk');
+        const btnNextChunk = document.getElementById('btn-next-chunk');
+        const totalChunksSpan = document.getElementById('total-chunks');
+        const unitTextSpan = document.getElementById('unit-text');
+        const viewer = document.getElementById('viewer');
+
+        const searchInput = document.getElementById('search-input');
+        const btnSearch = document.getElementById('btn-search');
+        const searchInfo = document.getElementById('search-info');
+        const searchCurrent = document.getElementById('search-current');
+        const searchTotal = document.getElementById('search-total');
+        const btnSearchPrev = document.getElementById('btn-search-prev');
+        const btnSearchNext = document.getElementById('btn-search-next');
+        const btnSearchClose = document.getElementById('btn-search-close');
+
+        let isSettingsOpen = true;
+        const toggleSettingsBtn = document.getElementById('toggle-settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+
+        function updateSettingsToggle() {
+            if (isSettingsOpen) {
+                settingsPanel.style.display = 'flex';
+                toggleSettingsBtn.innerHTML = '⚙️ 隱藏設定';
+                toggleSettingsBtn.style.backgroundColor = '#4CAF50';
+            } else {
+                settingsPanel.style.display = 'none';
+                toggleSettingsBtn.innerHTML = '⚙️ 顯示設定';
+                toggleSettingsBtn.style.backgroundColor = '#555';
+            }
+        }
+
+        toggleSettingsBtn.addEventListener('click', () => {
+            isSettingsOpen = !isSettingsOpen;
+            updateSettingsToggle();
+            saveSettings();
+        });
+
+        let dynamicTxtStyle = document.createElement('style');
+        document.head.appendChild(dynamicTxtStyle);
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+        }
+
+        function executeSearch() {
+            const q = searchInput.value.trim();
+            if (!q) return;
+            if (!book && currentMode !== 'txt') return;
+            
+            searchQuery = q;
+            searchResults = [];
+            currentSearchIndex = -1;
+            
+            if (currentMode === 'txt') {
+                for (let i = 0; i < txtChunks.length; i++) {
+                    const paragraphs = txtChunks[i].split(/\r?\n/).filter(line => line.trim().length > 0);
+                    for (let p = 0; p < paragraphs.length; p++) {
+                        let text = paragraphs[p];
+                        let startIndex = 0;
+                        let idx;
+                        let matchOccur = 0;
+                        while ((idx = text.indexOf(q, startIndex)) > -1) {
+                            searchResults.push({ chunkIndex: i, pIndex: p, matchOccur: matchOccur });
+                            startIndex = idx + q.length;
+                            matchOccur++;
+                        }
+                    }
+                }
+                finishSearch();
+            } else if (currentMode === 'epub') {
+                searchInfo.style.display = 'inline-flex';
+                searchTotal.textContent = "搜尋中...";
+                searchCurrent.textContent = "0";
+                
+                let promises = book.spine.spineItems.map(item => {
+                    return item.load(book.load.bind(book)).then(() => {
+                        let res = item.find(q);
+                        item.unload();
+                        return res;
+                    });
+                });
+                
+                Promise.all(promises).then(results => {
+                    searchResults = [].concat.apply([], results);
+                    finishSearch();
+                }).catch(() => {
+                    alert("此 EPUB 檔案過大或不支援全書搜尋！");
+                    closeSearch();
+                });
+            }
+        }
+
+        function finishSearch() {
+            if (searchResults.length === 0) {
+                alert("找不到相符的文字！");
+                closeSearch();
+                return;
+            }
+            searchInfo.style.display = 'inline-flex';
+            searchTotal.textContent = searchResults.length;
+            goToSearchResult(0);
+        }
+
+        function goToSearchResult(index) {
+            if (searchResults.length === 0) return;
+            if (index < 0) index = searchResults.length - 1;
+            if (index >= searchResults.length) index = 0;
+            currentSearchIndex = index;
+            searchCurrent.textContent = currentSearchIndex + 1;
+
+            if (currentMode === 'txt') {
+                const target = searchResults[currentSearchIndex];
+                if (currentTxtIndex !== target.chunkIndex) {
+                    currentTxtIndex = target.chunkIndex;
+                    renderTxtChunk(true);
+                } else {
+                    renderTxtChunk(true); 
+                }
+            } else if (currentMode === 'epub') {
+                const cfi = searchResults[currentSearchIndex].cfi;
+                rendition.display(cfi).then(() => {
+                    rendition.annotations.clear();
+                    rendition.annotations.highlight(cfi);
+                });
+            }
+        }
+
+        function closeSearch(skipRender = false) {
+            searchQuery = "";
+            searchResults = [];
+            currentSearchIndex = -1;
+            searchInfo.style.display = 'none';
+            searchInput.value = "";
+            if (!skipRender && currentMode === 'txt' && txtChunks.length > 0) renderTxtChunk();
+            if (currentMode === 'epub' && rendition) rendition.annotations.clear();
+        }
+
+        btnSearch.addEventListener('click', executeSearch);
+        searchInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') executeSearch(); });
+        btnSearchNext.addEventListener('click', () => goToSearchResult(currentSearchIndex + 1));
+        btnSearchPrev.addEventListener('click', () => goToSearchResult(currentSearchIndex - 1));
+        btnSearchClose.addEventListener('click', () => closeSearch(false));
+
+        function saveSettings() {
+            const settings = {
+                encoding: encodingSelect.value, splitMode: splitModeSelect.value,
+                fontFamily: fontFamilySelect.value, boldText: boldTextCheckbox.checked,
+                bgColor: bgColorInput.value, textColor: textColorInput.value,
+                fontSize: fontSizeInput.value, lineHeight: lineHeightInput.value, paraSpacing: paraSpacingInput.value,
+                settingsOpen: isSettingsOpen
+            };
+            localStorage.setItem('reader_settings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('reader_settings');
+            if (saved) {
+                try {
+                    const s = JSON.parse(saved);
+                    if (s.encoding) encodingSelect.value = s.encoding;
+                    if (s.splitMode) splitModeSelect.value = s.splitMode;
+                    if (s.fontFamily) fontFamilySelect.value = s.fontFamily;
+                    if (s.boldText !== undefined) boldTextCheckbox.checked = s.boldText;
+                    if (s.bgColor) bgColorInput.value = s.bgColor;
+                    if (s.textColor) textColorInput.value = s.textColor;
+                    if (s.fontSize) fontSizeInput.value = s.fontSize;
+                    if (s.lineHeight) lineHeightInput.value = s.lineHeight;
+                    if (s.paraSpacing) paraSpacingInput.value = s.paraSpacing;
+                    if (s.settingsOpen !== undefined) isSettingsOpen = s.settingsOpen;
+                } catch(e) {}
+            }
+            updateSettingsToggle(); 
+        }
+
+        // ================= 恢復原生瀏覽器存檔方式 =================
+        exportBtn.addEventListener('click', () => {
+            saveSettings(); 
+            let backupData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('reader_')) backupData[key] = localStorage.getItem(key);
+            }
+            if (Object.keys(backupData).length === 0) return alert("沒有資料可匯出！");
+            
+            const jsonData = JSON.stringify(backupData);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = '閱讀器備份.json'; 
+            document.body.appendChild(a); // 防呆，部分手機瀏覽器需要 append 到畫面才能下載
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        importFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    for (let key in backupData) if (key.startsWith('reader_')) localStorage.setItem(key, backupData[key]);
+                    loadSettings(); applyStyles();
+                    if (currentFileName) {
+                        if (currentMode === 'txt') processTxtData();
+                        else if (currentMode === 'epub' && rendition) {
+                            const p = localStorage.getItem('reader_progress_' + currentFileName);
+                            if (p && p.startsWith('epubcfi')) rendition.display(p);
+                        }
+                    }
+                    alert("還原成功！");
+                } catch (err) { alert("檔案錯誤！"); }
+                importFile.value = ''; 
+            };
+            reader.readAsText(file);
+        });
+
+        function saveTxtProgress() {
+            if (currentMode !== 'txt') return;
+            const txtContainer = document.getElementById('txt-container');
+            if (txtContainer) {
+                localStorage.setItem('reader_progress_' + currentFileName, JSON.stringify({ index: currentTxtIndex, scrollTop: txtContainer.scrollTop }));
+            }
+        }
+
+        function updateTxtPageInfo() {
+            if (currentMode === 'txt' && txtChunks.length > 0) {
+                pageInfoContainer.style.display = 'flex';
+                chunkInput.value = currentTxtIndex + 1; 
+                chunkInput.max = txtChunks.length;
+                totalChunksSpan.textContent = txtChunks.length;
+                unitTextSpan.textContent = splitModeSelect.value === 'chapter' ? '章' : '段';
+            }
+        }
+
+        chunkInput.addEventListener('change', function() {
+            let val = parseInt(this.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (currentMode === 'txt') {
+                if (val > txtChunks.length) val = txtChunks.length;
+                currentTxtIndex = val - 1; renderTxtChunk();
+            } else if (currentMode === 'epub' && book && book.spine) {
+                let max = book.spine.length || 999;
+                if (val > max) val = max;
+                const target = book.spine.get(val - 1);
+                if (target) rendition.display(target.href);
+            }
+            this.value = val;
+        });
+
+        btnPrevChunk.addEventListener('click', () => { let v = parseInt(chunkInput.value); if(v > 1) { chunkInput.value = v-1; chunkInput.dispatchEvent(new Event('change')); }});
+        btnNextChunk.addEventListener('click', () => { let v = parseInt(chunkInput.value); let max = parseInt(chunkInput.max)||999; if(v < max) { chunkInput.value = v+1; chunkInput.dispatchEvent(new Event('change')); }});
+        
+        tocSelect.addEventListener('change', function(e) {
+            if (!e.target.value) return;
+            if (currentMode === 'epub' && rendition) rendition.display(e.target.value);
+            else if (currentMode === 'txt') { currentTxtIndex = parseInt(e.target.value); renderTxtChunk(); }
+            this.selectedIndex = 0; 
+        });
+
+        function renderTxtChunk(scrollToSearch = false) {
+            if (currentMode !== 'txt' || txtChunks.length === 0) return;
+            
+            let txtContainer = document.getElementById('txt-container');
+            if (!txtContainer) {
+                viewer.innerHTML = '<div id="txt-container"></div>';
+                txtContainer = document.getElementById('txt-container');
+                applyStyles(); 
+                txtContainer.addEventListener('scroll', () => {
+                    if (currentMode !== 'txt') return;
+                    clearTimeout(txtScrollTimeout);
+                    txtScrollTimeout = setTimeout(saveTxtProgress, 1500);
+                });
+            }
+            
+            const text = txtChunks[currentTxtIndex];
+            const paragraphs = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+            
+            let htmlParts = [];
+            for (let p = 0; p < paragraphs.length; p++) {
+                let pText = paragraphs[p];
+                
+                if (searchQuery && searchResults.length > 0) {
+                    let matchCount = 0;
+                    let regex = new RegExp(escapeRegExp(searchQuery), 'gi');
+                    pText = pText.replace(regex, (match) => {
+                        let isActive = false;
+                        if (currentSearchIndex !== -1) {
+                            let activeRes = searchResults[currentSearchIndex];
+                            if (activeRes.chunkIndex === currentTxtIndex && activeRes.pIndex === p && activeRes.matchOccur === matchCount) isActive = true;
+                        }
+                        matchCount++;
+                        return isActive ? `<mark id="active-mark" style="background:#ff9800;color:white;border-radius:2px;">${match}</mark>` 
+                                        : `<mark style="background:#ffeb3b;color:black;border-radius:2px;">${match}</mark>`;
+                    });
+                }
+                htmlParts.push(`<p>${pText}</p>`);
+            }
+            
+            txtContainer.innerHTML = htmlParts.join('');
+            updateTxtPageInfo();
+            
+            if (scrollToSearch && document.getElementById('active-mark')) {
+                setTimeout(() => {
+                    document.getElementById('active-mark').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
+            } else {
+                txtContainer.scrollTop = txtRestoreScrollTop;
+            }
+            txtRestoreScrollTop = 0; 
+            saveTxtProgress(); 
+        }
+
+        function buildTxtToc() {
+            tocSelect.innerHTML = '<option value="" disabled selected>📖 目錄</option>';
+            if (splitModeSelect.value === 'chapter' && txtChunks.length > 0) {
+                txtChunks.forEach((chunk, index) => {
+                    let f = chunk.trim().split(/\r?\n/)[0].trim();
+                    if (f.length > 15) f = f.substring(0, 15) + '...';
+                    let o = document.createElement('option'); o.textContent = f; o.value = index; tocSelect.appendChild(o);
+                });
+                tocSelect.style.display = 'inline-block';
+            } else tocSelect.style.display = 'none';
+        }
+
+        function processTxtData() {
+            if (!rawFileBuffer) return;
+            
+            viewer.innerHTML = '<div class="loading-msg">⏳ 處理中...</div>';
+            closeSearch(true); 
+            
+            setTimeout(() => {
+                try {
+                    const fullText = new TextDecoder(encodingSelect.value).decode(rawFileBuffer);
+                    txtChunks = [];
+                    if (splitModeSelect.value === 'chapter') {
+                        const chapterRegex = /(^[ \t\u3000]*第[ \t\u3000]*[一二三四五六七八九十百千萬零0-9０-９]+[ \t\u3000]*[章回節卷集部篇話话折季].*$)/m;
+                        const parts = fullText.split(chapterRegex);
+                        if (parts[0].trim().length > 0) txtChunks.push(parts[0]);
+                        for (let i = 1; i < parts.length; i += 2) txtChunks.push(parts[i] + (parts[i+1] || ""));
+                        if (txtChunks.length < 3 && fullText.length > 50000) {
+                            alert("找不到標準的章節標題，自動切換為「固定字數」模式！");
+                            splitModeSelect.value = 'fixed'; saveSettings(); processTxtData(); return;
+                        }
+                    } else {
+                        let startIndex = 0;
+                        while (startIndex < fullText.length) {
+                            let endIndex = startIndex + 5000;
+                            if (endIndex < fullText.length) {
+                                let lastNewline = fullText.lastIndexOf('\n', endIndex);
+                                if (lastNewline > startIndex) endIndex = lastNewline + 1;
+                            }
+                            txtChunks.push(fullText.substring(startIndex, endIndex));
+                            startIndex = endIndex;
+                        }
+                    }
+                    buildTxtToc();
+                    const savedP = localStorage.getItem('reader_progress_' + currentFileName);
+                    txtRestoreScrollTop = 0;
+                    if (savedP !== null) {
+                        if (savedP.startsWith('{')) { let p = JSON.parse(savedP); currentTxtIndex = p.index; txtRestoreScrollTop = p.scrollTop || 0; }
+                        else { currentTxtIndex = parseInt(savedP, 10); }
+                        if (isNaN(currentTxtIndex) || currentTxtIndex >= txtChunks.length || currentTxtIndex < 0) { currentTxtIndex = 0; txtRestoreScrollTop = 0; }
+                    } else currentTxtIndex = 0;
+                    renderTxtChunk();
+                } catch (e) { alert("解碼失敗，請更換編碼！"); viewer.innerHTML = ''; }
+            }, 100); 
+        }
+
+        function applyStyles() {
+            const bg = bgColorInput.value, txt = textColorInput.value, fz = fontSizeInput.value + '%', fm = fontFamilySelect.value, fw = boldTextCheckbox.checked ? 'bold' : 'normal';
+            const lh = lineHeightInput.value, ps = paraSpacingInput.value + 'px';
+            
+            document.body.style.backgroundColor = bg; document.body.style.fontFamily = fm; viewer.style.backgroundColor = bg;
+            
+            if (currentMode === 'epub' && rendition) {
+                rendition.themes.register("c", { "body":{ "background":`${bg}!important`, "color":`${txt}!important`, "font-family":`${fm}!important`, "font-weight":`${fw}!important`}, "p,div,span,h1,h2,h3":{ "color":`${txt}!important`, "font-family":`${fm}!important`, "font-weight":`${fw}!important`, "line-height":`${lh}!important`}, "p": { "margin-bottom":`${ps}!important` } });
+                rendition.themes.select("c"); rendition.themes.fontSize(fz);
+            } 
+            else if (currentMode === 'txt') {
+                const c = document.getElementById('txt-container');
+                if (c) { c.style.color = txt; c.style.fontSize = fz; c.style.fontFamily = fm; c.style.fontWeight = fw; }
+                dynamicTxtStyle.innerHTML = `#txt-container p { line-height: ${lh} !important; margin-bottom: ${ps} !important; }`;
+            }
+        }
+
+        const up = () => { applyStyles(); saveSettings(); };
+        bgColorInput.addEventListener('input', up); textColorInput.addEventListener('input', up); fontSizeInput.addEventListener('input', up);
+        lineHeightInput.addEventListener('input', up); paraSpacingInput.addEventListener('input', up);
+        fontFamilySelect.addEventListener('change', up); boldTextCheckbox.addEventListener('change', up);
+        
+        encodingSelect.addEventListener('change', () => { saveSettings(); if (currentMode === 'txt') processTxtData(); });
+        splitModeSelect.addEventListener('change', () => { saveSettings(); if (currentMode === 'txt') processTxtData(); });
+        
+        loadSettings(); applyStyles();
+
+        function buildEpubToc(items, lvl = 0) {
+            items.forEach(i => {
+                let o = document.createElement('option'); o.textContent = ' '.repeat(lvl) + i.label.trim(); o.value = i.href; tocSelect.appendChild(o);
+                if (i.subitems && i.subitems.length > 0) buildEpubToc(i.subitems, lvl + 1);
+            });
+        }
+
+        // ================= 恢復最標準的 EPUB 讀取機制 =================
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            currentFileName = file.name; const ext = currentFileName.split('.').pop().toLowerCase();
+            
+            if (book) { book.destroy(); book = null; rendition = null; }
+            viewer.innerHTML = ''; txtChunks = []; currentTxtIndex = 0; rawFileBuffer = null;
+            pageInfoContainer.style.display = 'none'; tocSelect.style.display = 'none'; closeSearch(true);
+
+            if (ext === 'epub') {
+                currentMode = 'epub';
+                const r = new FileReader();
+                r.onload = function(e) {
+                    try {
+                        // 使用原生的 ePub(ArrayBuffer) 解析
+                        book = ePub(e.target.result);
+                        
+                        book.loaded.navigation.then(nav => { 
+                            tocSelect.innerHTML = '<option value="" disabled selected>📖 目錄</option>'; 
+                            if(nav.toc) buildEpubToc(nav.toc); 
+                            tocSelect.style.display = 'inline-block'; 
+                        }).catch(err => console.log("導覽解析跳過"));
+
+                        rendition = book.renderTo("viewer", { width: "100%", height: "100%", spread: "none" });
+                        
+                        rendition.on("relocated", loc => {
+                            if (currentMode === 'epub') {
+                                pageInfoContainer.style.display = 'flex';
+                                chunkInput.value = (loc.start && loc.start.index !== undefined ? loc.start.index : 0) + 1;
+                                chunkInput.max = (book.spine ? book.spine.length || (book.spine.items && book.spine.items.length) : 0);
+                                totalChunksSpan.textContent = chunkInput.max; 
+                                unitTextSpan.textContent = '節'; 
+                                if (loc.start && loc.start.cfi) localStorage.setItem('reader_progress_' + currentFileName, loc.start.cfi);
+                            }
+                        });
+
+                        const sp = localStorage.getItem('reader_progress_' + currentFileName);
+                        if (sp && typeof sp === 'string' && sp.startsWith('epubcfi')) {
+                            rendition.display(sp).then(applyStyles).catch(() => {
+                                rendition.display().then(applyStyles);
+                            });
+                        } else {
+                            rendition.display().then(applyStyles);
+                        }
+                    } catch(err) {
+                        alert("讀取 EPUB 發生錯誤。");
+                        console.error(err);
+                    }
+                }; 
+                r.readAsArrayBuffer(file);
+            } 
+            else if (ext === 'txt') {
+                currentMode = 'txt';
+                const r = new FileReader(); r.onload = function(e) { rawFileBuffer = e.target.result; processTxtData(); }; r.readAsArrayBuffer(file);
+            } 
+        });
+
+        function goNext() {
+            if (currentMode === 'epub' && rendition) rendition.next();
+            else if (currentMode === 'txt') {
+                const c = document.getElementById('txt-container'); if (!c) return;
+                if (c.scrollTop + c.clientHeight >= c.scrollHeight - 10) { if (currentTxtIndex < txtChunks.length - 1) { currentTxtIndex++; renderTxtChunk(); } }
+                else c.scrollTop += (c.clientHeight - 40);
+            }
+        }
+        function goPrev() {
+            if (currentMode === 'epub' && rendition) rendition.prev();
+            else if (currentMode === 'txt') {
+                const c = document.getElementById('txt-container'); if (!c) return;
+                if (c.scrollTop <= 10) { if (currentTxtIndex > 0) { currentTxtIndex--; renderTxtChunk(); setTimeout(() => c.scrollTop = c.scrollHeight, 10); } }
+                else c.scrollTop -= (c.clientHeight - 40);
+            }
+        }
+        prevBtn.addEventListener('click', goPrev); nextBtn.addEventListener('click', goNext);
+        document.addEventListener('keyup', e => {
+            if (document.activeElement === chunkInput || document.activeElement === searchInput) return;
+            if (e.keyCode == 37) goPrev(); if (e.keyCode == 39) goNext(); 
+        }, false);
+    </script>
+</body>
+</html>
