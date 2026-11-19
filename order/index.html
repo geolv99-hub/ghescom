@@ -523,7 +523,6 @@
         try {
           const res = await fetch(GAS_URL, {
             method: "POST",
-            credentials: "omit",
             redirect: "follow",
             body: JSON.stringify({
               action: "addOrders",
@@ -808,7 +807,6 @@
       if (isCloudConfigured()) {
         await fetch(GAS_URL, {
           method: "POST",
-          credentials: "omit",
           redirect: "follow",
           body: JSON.stringify({ action: "saveConfig", config: state.config })
         });
@@ -830,7 +828,6 @@
       if (isCloudConfigured()) {
         await fetch(GAS_URL, {
           method: "POST",
-          credentials: "omit",
           redirect: "follow",
           body: JSON.stringify({ action: "clearDayOrders", day: targetSlot })
         });
