@@ -53,8 +53,8 @@
         <!-- 1. 點餐人 & 5. 其他備註 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">1. 點餐人姓名 / 暱稱 *</label>
-            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <label class="block text-xs font-bold text-slate-600 mb-1">點餐人姓名 / 暱稱 *</label>
+            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：英文科OO " class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <!-- 若該姓名已點過餐，即時顯示提醒與取消按鈕 -->
             <div id="existingUserBanner" class="hidden mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
               <span id="existingUserText" class="text-amber-800 font-bold"></span>
@@ -62,7 +62,7 @@
             </div>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">5. 其他備註（選填）</label>
+            <label class="block text-xs font-bold text-slate-600 mb-1">其他備註（選填）</label>
             <input id="inputNote" type="text" maxlength="60" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
