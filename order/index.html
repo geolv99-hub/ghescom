@@ -17,7 +17,7 @@
       </div>
       <div class="flex gap-2">
         <button onclick="loadFromCloud()" class="bg-amber-700 hover:bg-amber-800 px-2.5 py-1.5 rounded-lg text-xs font-medium">🔄 刷新</button>
-        <button onclick="toggleAdminModal()" class="bg-white text-amber-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow">⚙️ 團主管理</button>
+        <button onclick="requestAdminAccess()" class="bg-white text-amber-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow">⚙️ 團主管理</button>
       </div>
     </div>
 
@@ -54,7 +54,12 @@
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">1. 點餐人姓名 / 暱稱 *</label>
-            <input id="inputUserName" type="text" maxlength="25" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <!-- 若該姓名已點過餐，即時顯示提醒與取消按鈕 -->
+            <div id="existingUserBanner" class="hidden mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+              <span id="existingUserText" class="text-amber-800 font-bold"></span>
+              <button type="button" onclick="cancelMyOrderFromForm()" class="bg-red-100 hover:bg-red-200 text-red-700 px-2.5 py-1 rounded-lg font-bold shrink-0">🗑️ 取消舊單</button>
+            </div>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">5. 其他備註（選填）</label>
@@ -84,9 +89,12 @@
         <div id="dishStatsContainer" class="space-y-1.5 text-sm"></div>
       </div>
 
-      <!-- 給團主收錢看的個人應付金額 -->
+      <!-- 給團主收錢看的個人應付金額（含取消點餐按鈕） -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-        <h3 class="text-sm font-bold text-slate-800 mb-2">💰 本場次個人應付金額</h3>
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold text-slate-800">💰 本場次個人應付金額</h3>
+          <span class="text-[11px] text-slate-400">點錯可按右側取消重點</span>
+        </div>
         <div id="personStatsContainer" class="space-y-1.5 text-sm"></div>
       </div>
 
@@ -116,23 +124,60 @@
         <p class="text-xs text-slate-500">本場已選 <span id="cartTotalQty" class="font-bold text-amber-600">0</span> 份</p>
         <p class="text-lg font-extrabold text-slate-800">小計 $<span id="cartTotalPrice">0</span></p>
       </div>
-      <button id="submitBtn" onclick="submitOrder()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md">
+      <button id="submitBtn" onclick="handlePreSubmit()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md">
         送出本場點餐
       </button>
     </div>
   </div>
 
-  <!-- 團主手機管理彈窗（密碼僅送往後端驗證，前端不留存） -->
+  <!-- 彈窗 A：進入團主設定前的密碼驗證視窗 -->
+  <div id="pinVerifyModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-extrabold text-base text-slate-800">🔒 團主身分驗證</h3>
+        <button onclick="closePinModal()" class="text-slate-400 text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-500">請輸入團主管理密碼以進入設定後台：</p>
+      <input id="pinVerifyInput" type="password" onkeydown="if(event.key==='Enter') confirmAdminPin()" placeholder="請輸入團主密碼" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      <div class="flex gap-2">
+        <button onclick="closePinModal()" class="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-bold">取消</button>
+        <button id="pinVerifyBtn" onclick="confirmAdminPin()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">驗證進入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 B：重複點餐確認視窗（選擇覆蓋舊單 vs 加點第二次） -->
+  <div id="duplicateOrderModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl">
+      <div class="flex items-center gap-2 text-amber-600">
+        <span class="text-xl">⚠️</span>
+        <h3 class="font-extrabold text-base text-slate-800">發現您在本場次已經點過餐囉！</h3>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs space-y-1">
+        <p class="font-bold text-amber-900">點餐人：<span id="dupUserName"></span></p>
+        <p class="text-amber-800">您先前已點：<span id="dupOldItems" class="font-bold"></span></p>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">請問您這次送出是要**覆蓋上一次的點餐**，還是要**保留舊單並多訂這一份（訂兩次）**呢？</p>
+      <div class="space-y-2 pt-1">
+        <button onclick="executeSubmitOrder('replace')" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl text-xs font-bold shadow">
+          🔄 覆蓋上一次點餐（刪除舊單，改用新單）
+        </button>
+        <button onclick="executeSubmitOrder('append')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold shadow">
+          ➕ 我要訂兩次 / 加點（保留舊單並新增）
+        </button>
+        <button onclick="closeDuplicateModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl text-xs font-bold">
+          ✕ 先不要送出
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 C：團主手機管理後台（已通過密碼驗證才顯示） -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="font-extrabold text-base">⚙️ 團主管理後台（最多 6 場次）</h3>
-        <button onclick="toggleAdminModal()" class="text-slate-400 text-lg font-bold">✕</button>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">🔒 團主驗證密碼（由後端核對）*</label>
-        <input id="adminPinInput" type="password" value="" placeholder="請輸入團主密碼" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+        <button onclick="closeAdminModal()" class="text-slate-400 text-lg font-bold">✕</button>
       </div>
 
       <!-- 步驟 1：勾選要在前台顯示哪些場次 -->
@@ -159,13 +204,23 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">一鍵套用餐廳 / 飲料店 JSON 模版</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">方式 1：一鍵套用內建餐廳 JSON 模版</label>
           <select id="adminTemplateSelect" onchange="onTemplateSelectChange()" class="w-full border rounded-lg px-2.5 py-2 text-sm bg-white font-medium"></select>
         </div>
 
+        <!-- 新增方式 3：直接匯入 .json 菜單檔案 -->
+        <div class="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-700">方式 2：匯入菜單 JSON 檔案 (.json)</label>
+            <button type="button" onclick="downloadCurrentMenuJson()" class="text-[11px] text-amber-700 hover:underline font-bold">📥 下載目前菜單檔</button>
+          </div>
+          <input id="jsonFileInput" type="file" accept=".json,application/json" onchange="handleJsonFileUpload(event)" class="block w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-600 file:text-white hover:file:bg-amber-700" />
+          <p id="fileImportHint" class="text-[11px] text-slate-400">選取檔案後會自動填入下方文字框並切換為自訂菜單</p>
+        </div>
+
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">或貼上自訂菜單 JSON</label>
-          <textarea id="adminCustomJson" rows="3" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂店家","tags":["正常","去冰"],"items":[{"name":"招牌餐","price":100}]}'></textarea>
+          <label class="block text-xs font-bold text-slate-700 mb-1">方式 3：直接貼上或修改菜單 JSON 文字</label>
+          <textarea id="adminCustomJson" rows="4" oninput="onCustomJsonManualInput()" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂店家","tags":["正常","去冰"],"items":[{"name":"招牌餐","price":100}]}'></textarea>
         </div>
 
         <div class="flex items-center justify-between pt-1">
@@ -189,7 +244,9 @@
 
     const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6"];
 
-    // 防範前端 XSS 跨站腳本攻擊轉義函式
+    // 暫存已通過驗證的團主密碼（僅存於本次網頁記憶體，重新整理即清除）
+    let verifiedAdminPin = "";
+
     function escapeHTML(str) {
       return String(str || "")
         .replace(/&/g, "&amp;")
@@ -281,7 +338,7 @@
       const sel = document.getElementById("adminTemplateSelect");
       sel.innerHTML = Object.keys(RESTAURANT_TEMPLATES).map(k =>
         `<option value="${k}">${escapeHTML(RESTAURANT_TEMPLATES[k].name)}</option>`
-      ).join("") + `<option value="custom">✨ 使用下方自訂 JSON 菜單</option>`;
+      ).join("") + `<option value="custom">✨ 使用自訂 / 檔案匯入的 JSON 菜單</option>`;
     }
 
     function ensureSixSlotsConfig(conf) {
@@ -350,7 +407,7 @@
       const dayConf = state.config[state.currentDay];
       const menu = getActiveMenu(state.currentDay);
 
-      // 動態渲染頂部開啟的場次按鈕 (1~6 個)
+      // 動態渲染頂部開啟的場次按鈕
       const visibleSlots = SLOT_KEYS.filter(k => state.config[k] && state.config[k].visible);
       const tabsContainer = document.getElementById("slotTabsContainer");
       tabsContainer.innerHTML = visibleSlots.map(k => {
@@ -392,9 +449,29 @@
       document.getElementById("orderFormArea").classList.toggle("hidden", dayConf.closed);
       document.getElementById("bottomBar").classList.toggle("hidden", state.currentView !== "order" || dayConf.closed);
 
+      checkExistingUserHint();
       renderMenuCards(menu);
       renderCartBar(menu);
       renderSummary(dayOrders);
+    }
+
+    // 即時檢查輸入的點餐人是否已經在本場次點過餐
+    function checkExistingUserHint() {
+      const userName = (document.getElementById("inputUserName")?.value || "").trim();
+      const banner = document.getElementById("existingUserBanner");
+      const textEl = document.getElementById("existingUserText");
+      if (!banner || !userName) {
+        if (banner) banner.classList.add("hidden");
+        return;
+      }
+      const userOrders = state.orders.filter(o => o.day === state.currentDay && o.userName.trim() === userName);
+      if (userOrders.length > 0) {
+        const itemsStr = userOrders.map(o => `${o.mealName}x${o.qty}`).join("、");
+        textEl.textContent = `💡 您本場已點過：${itemsStr}`;
+        banner.classList.remove("hidden");
+      } else {
+        banner.classList.add("hidden");
+      }
     }
 
     function renderMenuCards(menu) {
@@ -476,15 +553,44 @@
       document.getElementById("cartTotalPrice").textContent = totalPrice;
     }
 
-    async function submitOrder() {
+    // ==========================================
+    // 點餐送出與「重複點餐偵測（覆蓋 vs 加點）」
+    // ==========================================
+    function handlePreSubmit() {
       const userName = document.getElementById("inputUserName").value.trim();
-      const note = document.getElementById("inputNote").value.trim();
       const menu = getActiveMenu(state.currentDay);
 
       if (!userName) {
         alert("請填寫「1. 點餐人姓名 / 暱稱」！");
         return;
       }
+
+      const hasItems = Object.keys(state.cart).some(idx => state.cart[idx].qty > 0 && menu.items[idx]);
+      if (!hasItems) {
+        alert("請至少選擇一道品項（點擊 ＋ 增加份數）！");
+        return;
+      }
+
+      // 檢查該點餐人在本場次是否已有訂單
+      const existingOrders = state.orders.filter(o => o.day === state.currentDay && o.userName.trim() === userName);
+      if (existingOrders.length > 0) {
+        document.getElementById("dupUserName").textContent = userName;
+        document.getElementById("dupOldItems").textContent = existingOrders.map(o => `${o.mealName} x${o.qty}`).join("、");
+        document.getElementById("duplicateOrderModal").classList.remove("hidden");
+      } else {
+        executeSubmitOrder("append");
+      }
+    }
+
+    function closeDuplicateModal() {
+      document.getElementById("duplicateOrderModal").classList.add("hidden");
+    }
+
+    async function executeSubmitOrder(mode) {
+      closeDuplicateModal();
+      const userName = document.getElementById("inputUserName").value.trim();
+      const note = document.getElementById("inputNote").value.trim();
+      const menu = getActiveMenu(state.currentDay);
 
       const selectedItems = [];
       Object.keys(state.cart).forEach(idx => {
@@ -500,11 +606,6 @@
         }
       });
 
-      if (selectedItems.length === 0) {
-        alert("請至少選擇一道品項（點擊 ＋ 增加份數）！");
-        return;
-      }
-
       const btn = document.getElementById("submitBtn");
       btn.disabled = true;
       btn.textContent = "送出中...";
@@ -514,6 +615,7 @@
           method: "POST",
           body: JSON.stringify({
             action: "addOrders",
+            mode: mode, // "replace" 覆蓋舊單 或 "append" 加點
             day: state.currentDay,
             userName,
             note,
@@ -523,14 +625,13 @@
         const data = await res.json();
         if (data.status !== "ok") {
           alert(data.message || "送出失敗");
-          btn.disabled = false;
-          btn.textContent = "送出本場點餐";
           return;
         }
         await loadFromCloud();
         state.cart = {};
         document.getElementById("inputNote").value = "";
-        alert(`🎉 ${userName} 在【${state.config[state.currentDay].label}】點餐成功！`);
+        const actionMsg = mode === "replace" ? "已覆蓋更新您先前的點餐" : "點餐成功";
+        alert(`🎉 ${userName} 在【${state.config[state.currentDay].label}】${actionMsg}！`);
         switchView("summary");
       } catch (e) {
         alert("連線異常，請稍後再試");
@@ -540,7 +641,48 @@
       }
     }
 
+    // ==========================================
+    // 取消個人點餐功能
+    // ==========================================
+    async function cancelMyOrderFromForm() {
+      const userName = document.getElementById("inputUserName").value.trim();
+      if (!userName) return;
+      await cancelUserOrderByName(userName);
+    }
+
+    async function cancelUserOrderByName(userName) {
+      const dayConf = state.config[state.currentDay];
+      if (dayConf.closed && !verifiedAdminPin) {
+        return alert("🔒 本場次已結單，無法自行取消點餐！請聯繫團主協助處理。");
+      }
+      if (!confirm(`確定要取消「${userName}」在【${dayConf.label}】的所有已點餐點嗎？`)) return;
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "cancelUserOrder",
+            day: state.currentDay,
+            userName: userName,
+            pin: verifiedAdminPin
+          })
+        });
+        const data = await res.json();
+        if (data.status !== "ok") {
+          return alert(data.message || "取消失敗");
+        }
+        await loadFromCloud();
+        alert(`🗑️ 已取消「${userName}」在【${dayConf.label}】的點餐紀錄。`);
+      } catch (e) {
+        alert("連線異常，請稍後再試");
+      }
+    }
+
     function renderSummary(dayOrders) {
+      const dayConf = state.config[state.currentDay];
+      const canCancel = !dayConf.closed || !!verifiedAdminPin;
+
+      // 1. 給店家叫餐統計
       const dishMap = {};
       dayOrders.forEach(o => {
         const key = `${o.mealName}（${o.special || '正常'}）`;
@@ -557,6 +699,7 @@
             </div>
           `).join("");
 
+      // 2. 個人應付金額（附帶取消點餐按鈕）
       const personMap = {};
       let grandTotal = 0;
       dayOrders.forEach(o => {
@@ -570,21 +713,31 @@
       const personKeys = Object.keys(personMap);
       personContainer.innerHTML = personKeys.length === 0
         ? `<p class="text-xs text-slate-400">本場次目前尚無點餐紀錄</p>`
-        : personKeys.map(p => `
-            <div class="flex justify-between items-center border-b border-slate-100 py-1.5">
-              <div>
-                <span class="font-bold text-slate-800">${escapeHTML(p)}</span>
-                <span class="text-xs text-slate-400 block">${escapeHTML(personMap[p].items.join("、"))}</span>
+        : personKeys.map(p => {
+            const safeName = escapeHTML(p);
+            const cancelBtnHtml = canCancel
+              ? `<button onclick="cancelUserOrderByName('${safeName}')" class="text-[11px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded-lg font-bold">🗑️ 取消點餐</button>`
+              : ``;
+            return `
+              <div class="flex justify-between items-center border-b border-slate-100 py-2 gap-2">
+                <div class="min-w-0 flex-1">
+                  <span class="font-bold text-slate-800">${safeName}</span>
+                  <span class="text-xs text-slate-400 block truncate">${escapeHTML(personMap[p].items.join("、"))}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="font-extrabold text-emerald-700">$${personMap[p].total}</span>
+                  ${cancelBtnHtml}
+                </div>
               </div>
-              <span class="font-extrabold text-emerald-700">$${personMap[p].total}</span>
-            </div>
-          `).join("") + `
+            `;
+          }).join("") + `
             <div class="flex justify-between items-center pt-2 font-extrabold text-base text-slate-900">
               <span>本場次總金額</span>
               <span class="text-amber-600">$${grandTotal}</span>
             </div>
           `;
 
+      // 3. 5大欄位明細表
       const tbody = document.getElementById("detailTableBody");
       tbody.innerHTML = dayOrders.map(o => `
         <tr>
@@ -641,18 +794,112 @@
     }
 
     // ==========================================
-    // 團主 6 場次管理後台邏輯（後端密碼驗證版）
+    // 團主密碼預先驗證 + JSON 檔案匯入 + 6 場次管理
     // ==========================================
-    function toggleAdminModal() {
-      const modal = document.getElementById("adminModal");
-      const isHidden = modal.classList.contains("hidden");
-      if (isHidden) {
-        state.editingSlot = state.currentDay;
-        renderAdminSlotSelector();
-        renderAdminVisibilityGrid();
-        loadAdminSlotDetail();
+    function requestAdminAccess() {
+      // 若本次開網頁已經驗證過密碼，直接開啟管理後台
+      if (verifiedAdminPin) {
+        openAdminModal();
+        return;
       }
-      modal.classList.toggle("hidden");
+      document.getElementById("pinVerifyInput").value = "";
+      document.getElementById("pinVerifyModal").classList.remove("hidden");
+      setTimeout(() => document.getElementById("pinVerifyInput").focus(), 100);
+    }
+
+    function closePinModal() {
+      document.getElementById("pinVerifyModal").classList.add("hidden");
+    }
+
+    async function confirmAdminPin() {
+      const pin = document.getElementById("pinVerifyInput").value.trim();
+      if (!pin) return alert("請輸入團主密碼！");
+
+      const btn = document.getElementById("pinVerifyBtn");
+      btn.disabled = true;
+      btn.textContent = "驗證中...";
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "verifyPin", pin: pin })
+        });
+        const data = await res.json();
+        if (data.status !== "ok") {
+          alert(data.message || "密碼錯誤！");
+          return;
+        }
+        verifiedAdminPin = pin;
+        closePinModal();
+        openAdminModal();
+        renderAll();
+      } catch (e) {
+        alert("連線驗證失敗，請檢查網路");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "驗證進入";
+      }
+    }
+
+    function openAdminModal() {
+      state.editingSlot = state.currentDay;
+      renderAdminSlotSelector();
+      renderAdminVisibilityGrid();
+      loadAdminSlotDetail();
+      document.getElementById("adminModal").classList.remove("hidden");
+    }
+
+    function closeAdminModal() {
+      document.getElementById("adminModal").classList.add("hidden");
+    }
+
+    // 處理匯入 .json 菜單檔案
+    function handleJsonFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const hintEl = document.getElementById("fileImportHint");
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.name || !Array.isArray(parsed.items)) {
+            alert("⚠️ 匯入的 JSON 檔案格式不符！必須包含 name (店名) 與 items (餐點陣列)。");
+            return;
+          }
+          // 自動填入 JSON 文字框並將下拉選單切換為 custom
+          document.getElementById("adminTemplateSelect").value = "custom";
+          document.getElementById("adminCustomJson").value = JSON.stringify(parsed, null, 2);
+          state.config[state.editingSlot].templateKey = "custom";
+          state.config[state.editingSlot].customMenu = parsed;
+          hintEl.textContent = `✅ 已成功匯入「${parsed.name}」（共 ${parsed.items.length} 道品項），請按下方儲存！`;
+          hintEl.className = "text-[11px] text-emerald-600 font-bold";
+        } catch (err) {
+          alert("❌ 無法解析此 JSON 檔案，請確認檔案內容是否為合法的 JSON 格式！");
+        } finally {
+          event.target.value = "";
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    // 下載目前編輯場次的菜單為 .json 檔案（方便團主修改或備份成模板檔案）
+    function downloadCurrentMenuJson() {
+      const rawText = document.getElementById("adminCustomJson").value.trim();
+      let menuObj = getActiveMenu(state.editingSlot);
+      if (rawText) {
+        try { menuObj = JSON.parse(rawText); } catch (e) {}
+      }
+      const blob = new Blob([JSON.stringify(menuObj, null, 2)], { type: "application/json;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${menuObj.name || '餐廳菜單'}.json`;
+      link.click();
+    }
+
+    // 當手動編輯 JSON 文字框時，自動將選單切換為「使用自訂 JSON」
+    function onCustomJsonManualInput() {
+      document.getElementById("adminTemplateSelect").value = "custom";
     }
 
     function renderAdminVisibilityGrid() {
@@ -718,9 +965,11 @@
       document.getElementById("adminSlotVisible").checked = !!slotConf.visible;
       document.getElementById("adminDayLabel").value = slotConf.label;
       document.getElementById("adminTemplateSelect").value = slotConf.templateKey;
-      document.getElementById("adminCustomJson").value = slotConf.customMenu
+      document.getElementById("adminCustomJson").value = (slotConf.templateKey === "custom" && slotConf.customMenu)
         ? JSON.stringify(slotConf.customMenu, null, 2)
         : JSON.stringify(RESTAURANT_TEMPLATES[slotConf.templateKey] || RESTAURANT_TEMPLATES.thai, null, 2);
+      document.getElementById("fileImportHint").textContent = "選取檔案後會自動填入下方文字框並切換為自訂菜單";
+      document.getElementById("fileImportHint").className = "text-[11px] text-slate-400";
       updateAdminCloseBtnUI(slotConf.closed);
     }
 
@@ -762,8 +1011,7 @@
     }
 
     async function saveAdminConfig() {
-      const pin = document.getElementById("adminPinInput").value.trim();
-      if (!pin) return alert("請先輸入團主驗證密碼！");
+      if (!verifiedAdminPin) return alert("請先驗證團主密碼！");
 
       saveCurrentEditingSlotToMemory();
 
@@ -778,21 +1026,21 @@
 
       const btn = document.getElementById("saveConfigBtn");
       btn.disabled = true;
-      btn.textContent = "驗證儲存中...";
+      btn.textContent = "儲存中...";
 
       try {
         const res = await fetch(GAS_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "saveConfig", pin: pin, config: state.config })
+          body: JSON.stringify({ action: "saveConfig", pin: verifiedAdminPin, config: state.config })
         });
         const data = await res.json();
         if (data.status !== "ok") {
           alert(data.message || "儲存失敗");
-          await loadFromCloud();
+          verifiedAdminPin = "";
           return;
         }
         await loadFromCloud();
-        toggleAdminModal();
+        closeAdminModal();
       } catch (e) {
         alert("連線失敗，請檢查網路");
       } finally {
@@ -802,8 +1050,7 @@
     }
 
     async function clearCurrentDayOrders() {
-      const pin = document.getElementById("adminPinInput").value.trim();
-      if (!pin) return alert("請先輸入團主驗證密碼！");
+      if (!verifiedAdminPin) return alert("請先驗證團主密碼！");
 
       const targetSlot = state.editingSlot;
       const label = state.config[targetSlot].label;
@@ -816,7 +1063,7 @@
       try {
         const res = await fetch(GAS_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "clearDayOrders", pin: pin, day: targetSlot })
+          body: JSON.stringify({ action: "clearDayOrders", pin: verifiedAdminPin, day: targetSlot })
         });
         const data = await res.json();
         if (data.status !== "ok") {
@@ -824,7 +1071,7 @@
           return;
         }
         await loadFromCloud();
-        toggleAdminModal();
+        closeAdminModal();
       } catch (e) {
         alert("連線失敗，請檢查網路");
       } finally {
