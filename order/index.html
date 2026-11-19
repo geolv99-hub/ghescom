@@ -54,11 +54,11 @@
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">1. 點餐人姓名 / 暱稱 *</label>
-            <input id="inputUserName" type="text" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <input id="inputUserName" type="text" maxlength="25" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">5. 其他備註（選填）</label>
-            <input id="inputNote" type="text" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <input id="inputNote" type="text" maxlength="60" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
 
@@ -122,7 +122,7 @@
     </div>
   </div>
 
-  <!-- 團主手機管理彈窗（支援 6 場次開關與獨立設定） -->
+  <!-- 團主手機管理彈窗（密碼僅送往後端驗證，前端不留存） -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
@@ -131,8 +131,8 @@
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">團主密碼（預設 8888）</label>
-        <input id="adminPinInput" type="password" value="8888" class="w-full border rounded-xl px-3 py-2 text-sm" />
+        <label class="block text-xs font-bold text-slate-600 mb-1">🔒 團主驗證密碼（由後端核對）*</label>
+        <input id="adminPinInput" type="password" value="" placeholder="請輸入團主密碼" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
       </div>
 
       <!-- 步驟 1：勾選要在前台顯示哪些場次 -->
@@ -175,19 +175,29 @@
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="clearCurrentDayOrders()" class="flex-1 bg-red-100 text-red-700 py-2.5 rounded-xl text-xs font-bold">🗑️ 清空此場訂單</button>
-        <button onclick="saveAdminConfig()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">💾 儲存全部設定</button>
+        <button id="clearOrdersBtn" onclick="clearCurrentDayOrders()" class="flex-1 bg-red-100 text-red-700 py-2.5 rounded-xl text-xs font-bold">🗑️ 清空此場訂單</button>
+        <button id="saveConfigBtn" onclick="saveAdminConfig()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">💾 儲存全部設定</button>
       </div>
     </div>
   </div>
 
   <script>
     // ====================================================
-    // 請將下方網址替換為您「個人 Gmail」部署的 /exec 網址
+    // 已填入您的 Google Apps Script 部署網址
     // ====================================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz9dpaum4R4wgPoLK2gywoKjBLsO8VR3SGDD--ocE8scIB0S12fTUMgGT9XEYokIktT/exec";
 
     const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6"];
+
+    // 防範前端 XSS 跨站腳本攻擊轉義函式
+    function escapeHTML(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
 
     // 內建正餐與飲料 JSON 模版庫
     const RESTAURANT_TEMPLATES = {
@@ -241,7 +251,6 @@
 
     function getDefaultConfig() {
       return {
-        pin: "8888",
         slot1: { visible: true,  label: "週四午餐", templateKey: "thai",  closed: false, customMenu: null },
         slot2: { visible: true,  label: "週四飲料", templateKey: "drink", closed: false, customMenu: null },
         slot3: { visible: true,  label: "週五午餐", templateKey: "bento", closed: false, customMenu: null },
@@ -264,13 +273,14 @@
 
     window.onload = () => {
       initTemplateSelect();
+      renderAll();
       loadFromCloud();
     };
 
     function initTemplateSelect() {
       const sel = document.getElementById("adminTemplateSelect");
       sel.innerHTML = Object.keys(RESTAURANT_TEMPLATES).map(k =>
-        `<option value="${k}">${RESTAURANT_TEMPLATES[k].name}</option>`
+        `<option value="${k}">${escapeHTML(RESTAURANT_TEMPLATES[k].name)}</option>`
       ).join("") + `<option value="custom">✨ 使用下方自訂 JSON 菜單</option>`;
     }
 
@@ -285,27 +295,14 @@
     async function loadFromCloud() {
       const statusEl = document.getElementById("syncStatus");
       if (!isCloudConfigured()) {
-        statusEl.textContent = "💡 本機預覽模式（填入個人 Gmail GAS_URL 即可雲端同步）";
-        const saved = localStorage.getItem("local_order_state_v6");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          state.config = ensureSixSlotsConfig(parsed.config || getDefaultConfig());
-          state.orders = parsed.orders || [];
-        } else {
-          state.orders = [
-            { id: "1", day: "slot1", userName: "王小美", mealName: "泰式打拋豬肉飯", price: 130, qty: 1, special: "小辣", note: "" },
-            { id: "2", day: "slot2", userName: "王小美", mealName: "手標泰式奶茶", price: 60, qty: 1, special: "微糖微冰", note: "" },
-            { id: "3", day: "slot3", userName: "陳大文", mealName: "脆皮炸雞腿便當", price: 125, qty: 1, special: "加辣菜脯", note: "" }
-          ];
-        }
-        ensureValidCurrentSlot();
+        statusEl.textContent = "💡 本機預覽模式";
         renderAll();
         return;
       }
 
       try {
         statusEl.textContent = "🔄 雲端試算表同步中...";
-        const res = await fetch(GAS_URL, { credentials: "omit", redirect: "follow" });
+        const res = await fetch(GAS_URL);
         const data = await res.json();
         if (data.status === "ok") {
           state.config = ensureSixSlotsConfig(data.config);
@@ -315,7 +312,7 @@
           renderAll();
         }
       } catch (e) {
-        statusEl.textContent = "⚠️ 雲端連線失敗，請確認使用個人 Gmail 部署且權限為所有人";
+        statusEl.textContent = "⚠️ 雲端連線失敗，請檢查網路或 GAS 部署狀態";
       }
     }
 
@@ -327,13 +324,6 @@
       } else if (!visibleSlots.includes(state.currentDay)) {
         state.currentDay = visibleSlots[0];
       }
-    }
-
-    function saveLocalFallback() {
-      localStorage.setItem("local_order_state_v6", JSON.stringify({
-        config: state.config,
-        orders: state.orders
-      }));
     }
 
     function getActiveMenu(slotKey) {
@@ -365,13 +355,12 @@
       const tabsContainer = document.getElementById("slotTabsContainer");
       tabsContainer.innerHTML = visibleSlots.map(k => {
         const c = state.config[k];
-        const m = getActiveMenu(k);
         const lockIcon = c.closed ? "🔒" : "🟢";
         const isCurrent = state.currentDay === k;
         const btnClass = isCurrent
           ? "py-2 px-2 rounded-xl text-xs font-extrabold transition shadow bg-white text-amber-700 truncate"
           : "py-2 px-2 rounded-xl text-xs font-bold transition bg-amber-700/60 text-amber-100 hover:bg-amber-700 truncate";
-        return `<button onclick="switchDay('${k}')" class="${btnClass}">${lockIcon} ${c.label}</button>`;
+        return `<button onclick="switchDay('${k}')" class="${btnClass}">${lockIcon} ${escapeHTML(c.label)}</button>`;
       }).join("");
 
       // 餐廳標題與狀態
@@ -417,16 +406,17 @@
 
         const tagButtons = (menu.tags || ["正常"]).map(tag => {
           const isSelected = cartItem.special === tag;
-          return `<button type="button" onclick="selectSpecial(${idx}, '${tag}')" class="px-2.5 py-1 rounded-full text-xs font-bold border ${isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-100 text-slate-600 border-slate-200'}">${tag}</button>`;
+          const safeTag = escapeHTML(tag);
+          return `<button type="button" onclick="selectSpecial(${idx}, '${safeTag}')" class="px-2.5 py-1 rounded-full text-xs font-bold border ${isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-100 text-slate-600 border-slate-200'}">${safeTag}</button>`;
         }).join("");
 
         return `
           <div class="rounded-2xl p-4 shadow-sm border transition ${activeClass}">
             <div class="flex items-center justify-between">
               <div>
-                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${item.category || '品項'}</span>
-                <h4 class="text-base font-extrabold text-slate-800 mt-1">${item.name}</h4>
-                <p class="text-sm font-bold text-amber-600">$${item.price}</p>
+                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${escapeHTML(item.category || '品項')}</span>
+                <h4 class="text-base font-extrabold text-slate-800 mt-1">${escapeHTML(item.name)}</h4>
+                <p class="text-sm font-bold text-amber-600">$${Number(item.price) || 0}</p>
               </div>
               <div class="flex items-center gap-3">
                 <button type="button" onclick="changeQty(${idx}, -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-lg flex items-center justify-center">－</button>
@@ -439,7 +429,7 @@
               <div class="mt-3 pt-3 border-t border-slate-200 space-y-2">
                 <label class="block text-xs font-bold text-slate-600">4. 餐點特殊需求（點擊標籤或自行輸入）</label>
                 <div class="flex flex-wrap gap-1.5">${tagButtons}</div>
-                <input type="text" value="${cartItem.special}" oninput="updateCustomSpecial(${idx}, this.value)" placeholder="可自行輸入客製需求..." class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white" />
+                <input type="text" maxlength="40" value="${escapeHTML(cartItem.special)}" oninput="updateCustomSpecial(${idx}, this.value)" placeholder="可自行輸入客製需求..." class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white" />
               </div>
             ` : ''}
           </div>
@@ -519,52 +509,35 @@
       btn.disabled = true;
       btn.textContent = "送出中...";
 
-      if (isCloudConfigured()) {
-        try {
-          const res = await fetch(GAS_URL, {
-            method: "POST",
-            redirect: "follow",
-            body: JSON.stringify({
-              action: "addOrders",
-              day: state.currentDay,
-              userName,
-              note,
-              items: selectedItems
-            })
-          });
-          const data = await res.json();
-          if (data.status !== "ok") {
-            alert(data.message || "送出失敗");
-            btn.disabled = false;
-            btn.textContent = "送出本場點餐";
-            return;
-          }
-          await loadFromCloud();
-        } catch (e) {
-          alert("連線異常，請稍後再試");
-        }
-      } else {
-        selectedItems.forEach(item => {
-          state.orders.push({
-            id: "LOCAL-" + Date.now() + Math.random(),
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "addOrders",
             day: state.currentDay,
             userName,
-            mealName: item.mealName,
-            price: item.price,
-            qty: item.qty,
-            special: item.special,
-            note
-          });
+            note,
+            items: selectedItems
+          })
         });
-        saveLocalFallback();
+        const data = await res.json();
+        if (data.status !== "ok") {
+          alert(data.message || "送出失敗");
+          btn.disabled = false;
+          btn.textContent = "送出本場點餐";
+          return;
+        }
+        await loadFromCloud();
+        state.cart = {};
+        document.getElementById("inputNote").value = "";
+        alert(`🎉 ${userName} 在【${state.config[state.currentDay].label}】點餐成功！`);
+        switchView("summary");
+      } catch (e) {
+        alert("連線異常，請稍後再試");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "送出本場點餐";
       }
-
-      state.cart = {};
-      document.getElementById("inputNote").value = "";
-      btn.disabled = false;
-      btn.textContent = "送出本場點餐";
-      alert(`🎉 ${userName} 在【${state.config[state.currentDay].label}】點餐成功！`);
-      switchView("summary");
     }
 
     function renderSummary(dayOrders) {
@@ -579,7 +552,7 @@
         ? `<p class="text-xs text-slate-400">本場次目前尚無點餐紀錄</p>`
         : dishKeys.map(k => `
             <div class="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-              <span class="font-medium text-slate-700">${k}</span>
+              <span class="font-medium text-slate-700">${escapeHTML(k)}</span>
               <span class="font-extrabold text-amber-700">${dishMap[k]} 份</span>
             </div>
           `).join("");
@@ -600,8 +573,8 @@
         : personKeys.map(p => `
             <div class="flex justify-between items-center border-b border-slate-100 py-1.5">
               <div>
-                <span class="font-bold text-slate-800">${p}</span>
-                <span class="text-xs text-slate-400 block">${personMap[p].items.join("、")}</span>
+                <span class="font-bold text-slate-800">${escapeHTML(p)}</span>
+                <span class="text-xs text-slate-400 block">${escapeHTML(personMap[p].items.join("、"))}</span>
               </div>
               <span class="font-extrabold text-emerald-700">$${personMap[p].total}</span>
             </div>
@@ -615,11 +588,11 @@
       const tbody = document.getElementById("detailTableBody");
       tbody.innerHTML = dayOrders.map(o => `
         <tr>
-          <td class="py-2 pr-2 font-bold text-slate-800">${o.userName}</td>
-          <td class="py-2 pr-2">${o.mealName} <span class="text-slate-400">($${o.price})</span></td>
-          <td class="py-2 pr-2 font-bold">${o.qty}</td>
-          <td class="py-2 pr-2 text-amber-700">${o.special || '正常'}</td>
-          <td class="py-2 text-slate-500">${o.note || '-'}</td>
+          <td class="py-2 pr-2 font-bold text-slate-800">${escapeHTML(o.userName)}</td>
+          <td class="py-2 pr-2">${escapeHTML(o.mealName)} <span class="text-slate-400">($${Number(o.price) || 0})</span></td>
+          <td class="py-2 pr-2 font-bold">${Number(o.qty) || 0}</td>
+          <td class="py-2 pr-2 text-amber-700">${escapeHTML(o.special || '正常')}</td>
+          <td class="py-2 text-slate-500">${escapeHTML(o.note || '-')}</td>
         </tr>
       `).join("");
     }
@@ -668,7 +641,7 @@
     }
 
     // ==========================================
-    // 團主 6 場次管理後台邏輯
+    // 團主 6 場次管理後台邏輯（後端密碼驗證版）
     // ==========================================
     function toggleAdminModal() {
       const modal = document.getElementById("adminModal");
@@ -689,7 +662,7 @@
         const active = c.visible;
         return `
           <button type="button" onclick="quickToggleVisible('${k}')" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold ${active ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-400 border-slate-200'}">
-            <span class="truncate">${idx + 1}. ${c.label}</span>
+            <span class="truncate">${idx + 1}. ${escapeHTML(c.label)}</span>
             <span>${active ? '👁️顯示' : '🙈隱藏'}</span>
           </button>
         `;
@@ -711,7 +684,7 @@
       sel.innerHTML = SLOT_KEYS.map((k, idx) => {
         const c = state.config[k];
         const visTag = c.visible ? "👁️顯示中" : "🙈已隱藏";
-        return `<option value="${k}" ${state.editingSlot === k ? 'selected' : ''}>場次 ${idx + 1}：${c.label} (${visTag})</option>`;
+        return `<option value="${k}" ${state.editingSlot === k ? 'selected' : ''}>場次 ${idx + 1}：${escapeHTML(c.label)} (${visTag})</option>`;
       }).join("");
     }
 
@@ -789,12 +762,11 @@
     }
 
     async function saveAdminConfig() {
-      const pin = document.getElementById("adminPinInput").value;
-      if (pin !== state.config.pin) return alert("團主密碼錯誤！");
+      const pin = document.getElementById("adminPinInput").value.trim();
+      if (!pin) return alert("請先輸入團主驗證密碼！");
 
       saveCurrentEditingSlotToMemory();
 
-      // 驗證自訂 JSON
       const rawJson = document.getElementById("adminCustomJson").value.trim();
       if (state.config[state.editingSlot].templateKey === "custom" && rawJson) {
         try {
@@ -804,40 +776,61 @@
         }
       }
 
-      if (isCloudConfigured()) {
-        await fetch(GAS_URL, {
+      const btn = document.getElementById("saveConfigBtn");
+      btn.disabled = true;
+      btn.textContent = "驗證儲存中...";
+
+      try {
+        const res = await fetch(GAS_URL, {
           method: "POST",
-          redirect: "follow",
-          body: JSON.stringify({ action: "saveConfig", config: state.config })
+          body: JSON.stringify({ action: "saveConfig", pin: pin, config: state.config })
         });
+        const data = await res.json();
+        if (data.status !== "ok") {
+          alert(data.message || "儲存失敗");
+          await loadFromCloud();
+          return;
+        }
         await loadFromCloud();
-      } else {
-        saveLocalFallback();
-        renderAll();
+        toggleAdminModal();
+      } catch (e) {
+        alert("連線失敗，請檢查網路");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "💾 儲存全部設定";
       }
-      toggleAdminModal();
     }
 
     async function clearCurrentDayOrders() {
-      const pin = document.getElementById("adminPinInput").value;
-      if (pin !== state.config.pin) return alert("團主密碼錯誤！");
+      const pin = document.getElementById("adminPinInput").value.trim();
+      if (!pin) return alert("請先輸入團主驗證密碼！");
+
       const targetSlot = state.editingSlot;
       const label = state.config[targetSlot].label;
       if (!confirm(`確定要清空【${label}】的所有點餐紀錄嗎？`)) return;
 
-      if (isCloudConfigured()) {
-        await fetch(GAS_URL, {
+      const btn = document.getElementById("clearOrdersBtn");
+      btn.disabled = true;
+      btn.textContent = "清空中...";
+
+      try {
+        const res = await fetch(GAS_URL, {
           method: "POST",
-          redirect: "follow",
-          body: JSON.stringify({ action: "clearDayOrders", day: targetSlot })
+          body: JSON.stringify({ action: "clearDayOrders", pin: pin, day: targetSlot })
         });
+        const data = await res.json();
+        if (data.status !== "ok") {
+          alert(data.message || "清空失敗");
+          return;
+        }
         await loadFromCloud();
-      } else {
-        state.orders = state.orders.filter(o => o.day !== targetSlot);
-        saveLocalFallback();
-        renderAll();
+        toggleAdminModal();
+      } catch (e) {
+        alert("連線失敗，請檢查網路");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🗑️ 清空此場訂單";
       }
-      toggleAdminModal();
     }
   </script>
 </body>
