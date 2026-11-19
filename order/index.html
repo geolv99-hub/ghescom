@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>團隊雙日揪團點餐系統</title>
+  <title>團隊多場次揪團點餐系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-28 font-sans">
@@ -21,10 +21,9 @@
       </div>
     </div>
 
-    <!-- 雙日切換 Tab (週四 / 週五互不干擾) -->
-    <div class="max-w-md mx-auto px-4 pb-2 grid grid-cols-2 gap-2">
-      <button id="tab-day1" onclick="switchDay('day1')" class="py-2 rounded-xl text-sm font-bold transition shadow-sm bg-white text-amber-700"></button>
-      <button id="tab-day2" onclick="switchDay('day2')" class="py-2 rounded-xl text-sm font-bold transition bg-amber-700/60 text-amber-100"></button>
+    <!-- 動態場次切換列 (最多顯示 6 場，由團主自由開關) -->
+    <div class="max-w-md mx-auto px-4 pb-2.5">
+      <div id="slotTabsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
     </div>
   </header>
 
@@ -32,10 +31,10 @@
     <!-- 餐廳資訊與狀態橫幅 -->
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
       <div>
-        <span class="text-xs text-slate-400 font-medium">本日餐廳</span>
-        <h2 id="restaurantTitle" class="text-lg font-extrabold text-slate-800"></h2>
+        <span class="text-xs text-slate-400 font-medium">目前選擇場次與店家</span>
+        <h2 id="restaurantTitle" class="text-base font-extrabold text-slate-800 mt-0.5"></h2>
       </div>
-      <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold"></span>
+      <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold shrink-0"></span>
     </div>
 
     <!-- 功能分頁切換：我要點餐 vs 結單總表(5大欄位) -->
@@ -47,7 +46,7 @@
     <!-- 視圖 1：點餐區 -->
     <div id="view-order" class="space-y-4">
       <div id="closedNotice" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-center text-sm font-bold">
-        🔒 本場次已經結單囉！請切換至「結單總表」查看明細。
+        🔒 本場次已經結單囉！請切換至上方其他場次，或點「結單總表」查看明細。
       </div>
 
       <div id="orderFormArea" class="space-y-4">
@@ -59,7 +58,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">5. 其他備註（選填）</label>
-            <input id="inputNote" type="text" placeholder="例如：需要免洗餐具、12:30後取餐" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <input id="inputNote" type="text" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
 
@@ -70,7 +69,6 @@
 
     <!-- 視圖 2：結單總表與統計 -->
     <div id="view-summary" class="hidden space-y-4">
-      <!-- 一鍵複製 LINE 與匯出 CSV -->
       <div class="grid grid-cols-2 gap-2">
         <button onclick="copyLineSummary()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-3 rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1">
           📋 複製 LINE 對帳文字
@@ -82,13 +80,13 @@
 
       <!-- 給餐廳看的品項合併統計 -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-        <h3 class="text-sm font-bold text-slate-800 mb-2">📞 給餐廳叫餐統計（依品項＋特殊需求合併）</h3>
+        <h3 class="text-sm font-bold text-slate-800 mb-2">📞 給店家叫餐統計（依品項＋特殊需求合併）</h3>
         <div id="dishStatsContainer" class="space-y-1.5 text-sm"></div>
       </div>
 
       <!-- 給團主收錢看的個人應付金額 -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-        <h3 class="text-sm font-bold text-slate-800 mb-2">💰 個人應付金額統計</h3>
+        <h3 class="text-sm font-bold text-slate-800 mb-2">💰 本場次個人應付金額</h3>
         <div id="personStatsContainer" class="space-y-1.5 text-sm"></div>
       </div>
 
@@ -115,20 +113,20 @@
   <div id="bottomBar" class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-lg z-20">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
       <div>
-        <p class="text-xs text-slate-500">已選 <span id="cartTotalQty" class="font-bold text-amber-600">0</span> 份餐點</p>
-        <p class="text-lg font-extrabold text-slate-800">總計 $<span id="cartTotalPrice">0</span></p>
+        <p class="text-xs text-slate-500">本場已選 <span id="cartTotalQty" class="font-bold text-amber-600">0</span> 份</p>
+        <p class="text-lg font-extrabold text-slate-800">小計 $<span id="cartTotalPrice">0</span></p>
       </div>
       <button id="submitBtn" onclick="submitOrder()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md">
-        送出點餐
+        送出本場點餐
       </button>
     </div>
   </div>
 
-  <!-- 團主手機管理彈窗 -->
+  <!-- 團主手機管理彈窗（支援 6 場次開關與獨立設定） -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-extrabold text-base">⚙️ 團主手機管理後台</h3>
+        <h3 class="font-extrabold text-base">⚙️ 團主管理後台（最多 6 場次）</h3>
         <button onclick="toggleAdminModal()" class="text-slate-400 text-lg font-bold">✕</button>
       </div>
 
@@ -137,96 +135,129 @@
         <input id="adminPinInput" type="password" value="8888" class="w-full border rounded-xl px-3 py-2 text-sm" />
       </div>
 
-      <!-- 當前場次設定 -->
-      <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-3">
-        <p class="text-xs font-bold text-amber-800">目前管理場次：<span id="adminCurrentDayTitle"></span></p>
+      <!-- 步驟 1：勾選要在前台顯示哪些場次 -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+        <label class="block text-xs font-bold text-slate-700">👁️ 點選要「開啟顯示」的場次（前台將同步顯示）</label>
+        <div id="adminVisibilityGrid" class="grid grid-cols-2 gap-1.5"></div>
+      </div>
 
+      <!-- 步驟 2：選擇要編輯哪一個場次的詳細菜單 -->
+      <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-3">
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">場次顯示名稱</label>
-          <input id="adminDayLabel" type="text" class="w-full border rounded-lg px-2.5 py-1.5 text-sm bg-white" />
+          <label class="block text-xs font-bold text-amber-900 mb-1">✏️ 選擇要編輯的場次</label>
+          <select id="adminSlotSelector" onchange="loadAdminSlotDetail()" class="w-full border border-amber-300 rounded-lg px-2.5 py-2 text-sm font-bold bg-white text-amber-800"></select>
+        </div>
+
+        <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border">
+          <span class="text-xs font-bold text-slate-700">在前台顯示此場次</span>
+          <input id="adminSlotVisible" type="checkbox" onchange="onAdminSlotVisibleToggle()" class="w-4 h-4 accent-amber-600" />
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">一鍵切換餐廳 JSON 模版</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">場次按鈕名稱（如：週四午餐、週四飲料）</label>
+          <input id="adminDayLabel" type="text" oninput="onAdminLabelInput()" class="w-full border rounded-lg px-2.5 py-1.5 text-sm bg-white" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">一鍵套用餐廳 / 飲料店 JSON 模版</label>
           <select id="adminTemplateSelect" onchange="onTemplateSelectChange()" class="w-full border rounded-lg px-2.5 py-2 text-sm bg-white font-medium"></select>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">或貼上自訂菜單 JSON（AI 辨識照片後貼此）</label>
-          <textarea id="adminCustomJson" rows="4" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂餐廳","tags":["不辣","小辣"],"items":[{"name":"招牌飯","price":120}]}'></textarea>
+          <label class="block text-xs font-bold text-slate-700 mb-1">或貼上自訂菜單 JSON</label>
+          <textarea id="adminCustomJson" rows="3" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂店家","tags":["正常","去冰"],"items":[{"name":"招牌餐","price":100}]}'></textarea>
         </div>
 
         <div class="flex items-center justify-between pt-1">
-          <span class="text-xs font-bold text-slate-700">結單鎖定狀態</span>
-          <button id="adminToggleCloseBtn" onclick="toggleDayClosed()" class="px-4 py-1.5 rounded-lg text-xs font-bold"></button>
+          <span class="text-xs font-bold text-slate-700">本場結單狀態</span>
+          <button id="adminToggleCloseBtn" type="button" onclick="toggleDayClosed()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold"></button>
         </div>
       </div>
 
-      <div class="flex gap-2 pt-2">
-        <button onclick="clearCurrentDayOrders()" class="flex-1 bg-red-100 text-red-700 py-2.5 rounded-xl text-xs font-bold">🗑️ 清空本場訂單</button>
-        <button onclick="saveAdminConfig()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">💾 儲存並同步</button>
+      <div class="flex gap-2 pt-1">
+        <button onclick="clearCurrentDayOrders()" class="flex-1 bg-red-100 text-red-700 py-2.5 rounded-xl text-xs font-bold">🗑️ 清空此場訂單</button>
+        <button onclick="saveAdminConfig()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">💾 儲存全部設定</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ==========================================
-    // 請將下方網址替換為您的 Google Apps Script 網址
-    // ==========================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzIWkpjYl7qARbcyn-1tDcnk-W2_B_UaIAlGW0pKNqpFK_Hcb57XEBJH4sa7ZxhVI4zJA/exec";
+    // ====================================================
+    // 請將下方網址替換為您「個人 Gmail」部署的 /exec 網址
+    // ====================================================
+    const GAS_URL = "YOUR_GAS_WEB_APP_URL";
 
-    // 內建餐廳 JSON 模版庫（可隨時擴充）
+    const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6"];
+
+    // 內建正餐與飲料 JSON 模版庫
     const RESTAURANT_TEMPLATES = {
       thai: {
         name: "🐘 泰美味泰式料理",
-        tags: ["正常", "不辣", "微辣", "小辣", "中辣", "大辣", "飯少", "不加香菜", "去冰"],
+        tags: ["正常", "不辣", "微辣", "小辣", "中辣", "大辣", "飯少", "不加香菜"],
         items: [
           { name: "泰式打拋豬肉飯", price: 130, category: "主餐" },
           { name: "綠咖哩椰汁雞飯", price: 140, category: "主餐" },
           { name: "泰式酸辣海鮮河粉", price: 150, category: "主餐" },
           { name: "泰式椒麻雞腿飯", price: 145, category: "主餐" },
-          { name: "月亮蝦餅 (單點)", price: 180, category: "單點小菜" },
-          { name: "涼拌青木瓜絲", price: 100, category: "單點小菜" },
-          { name: "手標泰式奶茶", price: 60, category: "飲料" },
-          { name: "泰式檸檬綠茶", price: 50, category: "飲料" }
+          { name: "月亮蝦餅 (單點)", price: 180, category: "單點" },
+          { name: "涼拌青木瓜絲", price: 100, category: "單點" }
         ]
       },
       bento: {
         name: "🍱 阿霞人氣手作便當",
         tags: ["正常", "飯少", "加飯(+$10)", "不要酸菜", "加辣菜脯", "去滷汁"],
         items: [
-          { name: "招牌厚切排骨飯", price: 115, category: "主餐" },
-          { name: "脆皮炸雞腿便當", price: 125, category: "主餐" },
-          { name: "挪威炙燒鯖魚飯", price: 120, category: "主餐" },
-          { name: "古早味滷雞腿飯", price: 115, category: "主餐" },
-          { name: "蒜泥白肉便當", price: 110, category: "主餐" },
-          { name: "單點炸排骨", price: 70, category: "單點" },
+          { name: "招牌厚切排骨飯", price: 115, category: "便當" },
+          { name: "脆皮炸雞腿便當", price: 125, category: "便當" },
+          { name: "挪威炙燒鯖魚飯", price: 120, category: "便當" },
+          { name: "古早味滷雞腿飯", price: 115, category: "便當" },
+          { name: "蒜泥白肉便當", price: 110, category: "便當" },
           { name: "養生味噌湯", price: 25, category: "湯品" }
         ]
       },
       drink: {
-        name: "🧋 幸福堂下午茶手搖飲",
-        tags: ["無糖去冰", "微糖微冰", "半糖少冰", "無糖常溫", "加珍珠(+$10)", "加椰果(+$10)"],
+        name: "🧋 幸福堂手搖飲專賣",
+        tags: ["無糖去冰", "無糖微冰", "微糖微冰", "微糖去冰", "半糖少冰", "正常冰糖", "加珍珠(+$10)"],
         items: [
-          { name: "黑糖珍珠鮮奶", price: 65, category: "鮮奶系列" },
+          { name: "手標泰式奶茶", price: 60, category: "奶茶" },
+          { name: "黑糖珍珠鮮奶", price: 65, category: "鮮奶" },
           { name: "四季春青茶", price: 35, category: "原茶" },
           { name: "錫蘭紅玉拿鐵", price: 60, category: "鮮奶茶" },
-          { name: "滿杯紅柚綠茶", price: 65, category: "果茶" },
-          { name: "芋頭鮮奶西米露", price: 70, category: "特調" }
+          { name: "滿杯紅柚綠茶", price: 65, category: "果茶" }
+        ]
+      },
+      cafe: {
+        name: "☕ 職人咖啡下午茶",
+        tags: ["冰-無糖", "冰-微糖", "冰-少冰", "熱-無糖", "熱-微糖", "換燕麥奶(+$15)"],
+        items: [
+          { name: "美式黑咖啡 (大)", price: 55, category: "咖啡" },
+          { name: "經典醇厚拿鐵 (大)", price: 75, category: "咖啡" },
+          { name: "海鹽焦糖瑪奇朵", price: 85, category: "特調" },
+          { name: "靜岡抹茶拿鐵", price: 80, category: "歐蕾" },
+          { name: "比利時烈日鬆餅", price: 60, category: "點心" }
         ]
       }
     };
 
-    let state = {
-      currentDay: "day1",
-      currentView: "order",
-      config: {
+    function getDefaultConfig() {
+      return {
         pin: "8888",
-        day1: { label: "週四場", templateKey: "thai", closed: false, customMenu: null },
-        day2: { label: "週五場", templateKey: "bento", closed: false, customMenu: null }
-      },
+        slot1: { visible: true,  label: "週四午餐", templateKey: "thai",  closed: false, customMenu: null },
+        slot2: { visible: true,  label: "週四飲料", templateKey: "drink", closed: false, customMenu: null },
+        slot3: { visible: true,  label: "週五午餐", templateKey: "bento", closed: false, customMenu: null },
+        slot4: { visible: true,  label: "週五飲料", templateKey: "cafe",  closed: false, customMenu: null },
+        slot5: { visible: false, label: "備用場次5", templateKey: "thai",  closed: false, customMenu: null },
+        slot6: { visible: false, label: "備用場次6", templateKey: "drink", closed: false, customMenu: null }
+      };
+    }
+
+    let state = {
+      currentDay: "slot1",
+      currentView: "order",
+      editingSlot: "slot1",
+      config: getDefaultConfig(),
       orders: [],
-      cart: {} // key: itemIndex, value: { qty, special }
+      cart: {}
     };
 
     const isCloudConfigured = () => GAS_URL && GAS_URL.startsWith("https://script.google.com/");
@@ -243,59 +274,78 @@
       ).join("") + `<option value="custom">✨ 使用下方自訂 JSON 菜單</option>`;
     }
 
+    function ensureSixSlotsConfig(conf) {
+      const def = getDefaultConfig();
+      SLOT_KEYS.forEach(k => {
+        if (!conf[k]) conf[k] = def[k];
+      });
+      return conf;
+    }
+
     async function loadFromCloud() {
       const statusEl = document.getElementById("syncStatus");
       if (!isCloudConfigured()) {
-        statusEl.textContent = "💡 本機預覽模式（綁定試算表後即可多人同步）";
-        const saved = localStorage.getItem("local_order_state");
+        statusEl.textContent = "💡 本機預覽模式（填入個人 Gmail GAS_URL 即可雲端同步）";
+        const saved = localStorage.getItem("local_order_state_v6");
         if (saved) {
           const parsed = JSON.parse(saved);
-          state.config = parsed.config || state.config;
+          state.config = ensureSixSlotsConfig(parsed.config || getDefaultConfig());
           state.orders = parsed.orders || [];
         } else {
-          // 預設塞入兩筆範例方便預覽
           state.orders = [
-            { id: "1", day: "day1", userName: "王小美", mealName: "泰式打拋豬肉飯", price: 130, qty: 1, special: "小辣, 飯少", note: "自備環保筷" },
-            { id: "2", day: "day1", userName: "王小美", mealName: "手標泰式奶茶", price: 60, qty: 1, special: "去冰", note: "自備環保筷" },
-            { id: "3", day: "day2", userName: "陳大文", mealName: "脆皮炸雞腿便當", price: 125, qty: 1, special: "加辣菜脯", note: "" }
+            { id: "1", day: "slot1", userName: "王小美", mealName: "泰式打拋豬肉飯", price: 130, qty: 1, special: "小辣", note: "" },
+            { id: "2", day: "slot2", userName: "王小美", mealName: "手標泰式奶茶", price: 60, qty: 1, special: "微糖微冰", note: "" },
+            { id: "3", day: "slot3", userName: "陳大文", mealName: "脆皮炸雞腿便當", price: 125, qty: 1, special: "加辣菜脯", note: "" }
           ];
         }
+        ensureValidCurrentSlot();
         renderAll();
         return;
       }
 
       try {
         statusEl.textContent = "🔄 雲端試算表同步中...";
-        const res = await fetch(GAS_URL);
+        const res = await fetch(GAS_URL, { credentials: "omit", redirect: "follow" });
         const data = await res.json();
         if (data.status === "ok") {
-          state.config = data.config;
+          state.config = ensureSixSlotsConfig(data.config);
           state.orders = data.orders;
           statusEl.textContent = "✅ 已與 Google 試算表即時同步";
+          ensureValidCurrentSlot();
           renderAll();
         }
       } catch (e) {
-        statusEl.textContent = "⚠️ 雲端連線失敗，請檢查 GAS_URL 設定";
+        statusEl.textContent = "⚠️ 雲端連線失敗，請確認使用個人 Gmail 部署且權限為所有人";
+      }
+    }
+
+    function ensureValidCurrentSlot() {
+      const visibleSlots = SLOT_KEYS.filter(k => state.config[k] && state.config[k].visible);
+      if (visibleSlots.length === 0) {
+        state.config.slot1.visible = true;
+        state.currentDay = "slot1";
+      } else if (!visibleSlots.includes(state.currentDay)) {
+        state.currentDay = visibleSlots[0];
       }
     }
 
     function saveLocalFallback() {
-      localStorage.setItem("local_order_state", JSON.stringify({
+      localStorage.setItem("local_order_state_v6", JSON.stringify({
         config: state.config,
         orders: state.orders
       }));
     }
 
-    function getActiveMenu(dayKey) {
-      const dayConf = state.config[dayKey];
-      if (dayConf.templateKey === "custom" && dayConf.customMenu) {
-        return dayConf.customMenu;
+    function getActiveMenu(slotKey) {
+      const slotConf = state.config[slotKey];
+      if (slotConf && slotConf.templateKey === "custom" && slotConf.customMenu) {
+        return slotConf.customMenu;
       }
-      return RESTAURANT_TEMPLATES[dayConf.templateKey] || RESTAURANT_TEMPLATES.thai;
+      return RESTAURANT_TEMPLATES[slotConf?.templateKey] || RESTAURANT_TEMPLATES.thai;
     }
 
-    function switchDay(dayKey) {
-      state.currentDay = dayKey;
+    function switchDay(slotKey) {
+      state.currentDay = slotKey;
       state.cart = {};
       renderAll();
     }
@@ -306,33 +356,36 @@
     }
 
     function renderAll() {
+      ensureValidCurrentSlot();
       const dayConf = state.config[state.currentDay];
       const menu = getActiveMenu(state.currentDay);
 
-      // 頂部雙日按鈕
-      ["day1", "day2"].forEach(d => {
-        const btn = document.getElementById(`tab-${d}`);
-        const c = state.config[d];
-        const m = getActiveMenu(d);
+      // 動態渲染頂部開啟的場次按鈕 (1~6 個)
+      const visibleSlots = SLOT_KEYS.filter(k => state.config[k] && state.config[k].visible);
+      const tabsContainer = document.getElementById("slotTabsContainer");
+      tabsContainer.innerHTML = visibleSlots.map(k => {
+        const c = state.config[k];
+        const m = getActiveMenu(k);
         const lockIcon = c.closed ? "🔒" : "🟢";
-        btn.textContent = `${lockIcon} ${c.label} (${m.name.slice(0, 6)})`;
-        btn.className = state.currentDay === d
-          ? "py-2 rounded-xl text-xs font-extrabold transition shadow bg-white text-amber-700"
-          : "py-2 rounded-xl text-xs font-bold transition bg-amber-700/60 text-amber-100";
-      });
+        const isCurrent = state.currentDay === k;
+        const btnClass = isCurrent
+          ? "py-2 px-2 rounded-xl text-xs font-extrabold transition shadow bg-white text-amber-700 truncate"
+          : "py-2 px-2 rounded-xl text-xs font-bold transition bg-amber-700/60 text-amber-100 hover:bg-amber-700 truncate";
+        return `<button onclick="switchDay('${k}')" class="${btnClass}">${lockIcon} ${c.label}</button>`;
+      }).join("");
 
       // 餐廳標題與狀態
       document.getElementById("restaurantTitle").textContent = `${dayConf.label}｜${menu.name}`;
       const badge = document.getElementById("statusBadge");
       if (dayConf.closed) {
         badge.textContent = "🔒 已結單";
-        badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700";
+        badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 shrink-0";
       } else {
-        badge.textContent = "🟢 開放點餐中";
-        badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700";
+        badge.textContent = "🟢 開放中";
+        badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 shrink-0";
       }
 
-      // 分頁按鈕樣式
+      // 分頁按鈕與訂單數
       const dayOrders = state.orders.filter(o => o.day === state.currentDay);
       document.getElementById("orderCountBadge").textContent = dayOrders.length;
 
@@ -346,7 +399,6 @@
       document.getElementById("view-order").classList.toggle("hidden", state.currentView !== "order");
       document.getElementById("view-summary").classList.toggle("hidden", state.currentView !== "summary");
 
-      // 結單時隱藏點餐區
       document.getElementById("closedNotice").classList.toggle("hidden", !dayConf.closed);
       document.getElementById("orderFormArea").classList.toggle("hidden", dayConf.closed);
       document.getElementById("bottomBar").classList.toggle("hidden", state.currentView !== "order" || dayConf.closed);
@@ -358,8 +410,9 @@
 
     function renderMenuCards(menu) {
       const container = document.getElementById("menuListContainer");
+      const defaultTag = (menu.tags && menu.tags[0]) ? menu.tags[0] : "正常";
       container.innerHTML = menu.items.map((item, idx) => {
-        const cartItem = state.cart[idx] || { qty: 0, special: "正常" };
+        const cartItem = state.cart[idx] || { qty: 0, special: defaultTag };
         const activeClass = cartItem.qty > 0 ? "border-amber-500 ring-2 ring-amber-200 bg-amber-50/30" : "border-slate-200 bg-white";
 
         const tagButtons = (menu.tags || ["正常"]).map(tag => {
@@ -371,11 +424,10 @@
           <div class="rounded-2xl p-4 shadow-sm border transition ${activeClass}">
             <div class="flex items-center justify-between">
               <div>
-                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${item.category || '餐點'}</span>
+                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${item.category || '品項'}</span>
                 <h4 class="text-base font-extrabold text-slate-800 mt-1">${item.name}</h4>
                 <p class="text-sm font-bold text-amber-600">$${item.price}</p>
               </div>
-              <!-- 3. 餐點份數控制 -->
               <div class="flex items-center gap-3">
                 <button type="button" onclick="changeQty(${idx}, -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-lg flex items-center justify-center">－</button>
                 <span class="w-5 text-center font-extrabold text-base">${cartItem.qty}</span>
@@ -385,7 +437,7 @@
 
             ${cartItem.qty > 0 ? `
               <div class="mt-3 pt-3 border-t border-slate-200 space-y-2">
-                <label class="block text-xs font-bold text-slate-600">4. 餐點特殊需求（點擊快速選擇或自行輸入）</label>
+                <label class="block text-xs font-bold text-slate-600">4. 餐點特殊需求（點擊標籤或自行輸入）</label>
                 <div class="flex flex-wrap gap-1.5">${tagButtons}</div>
                 <input type="text" value="${cartItem.special}" oninput="updateCustomSpecial(${idx}, this.value)" placeholder="可自行輸入客製需求..." class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white" />
               </div>
@@ -396,7 +448,9 @@
     }
 
     function changeQty(idx, delta) {
-      const cur = state.cart[idx] || { qty: 0, special: "正常" };
+      const menu = getActiveMenu(state.currentDay);
+      const defaultTag = (menu.tags && menu.tags[0]) ? menu.tags[0] : "正常";
+      const cur = state.cart[idx] || { qty: 0, special: defaultTag };
       const nextQty = Math.max(0, cur.qty + delta);
       if (nextQty === 0) {
         delete state.cart[idx];
@@ -457,7 +511,7 @@
       });
 
       if (selectedItems.length === 0) {
-        alert("請至少選擇一道餐點（點擊 ＋ 增加份數）！");
+        alert("請至少選擇一道品項（點擊 ＋ 增加份數）！");
         return;
       }
 
@@ -469,6 +523,8 @@
         try {
           const res = await fetch(GAS_URL, {
             method: "POST",
+            credentials: "omit",
+            redirect: "follow",
             body: JSON.stringify({
               action: "addOrders",
               day: state.currentDay,
@@ -481,7 +537,7 @@
           if (data.status !== "ok") {
             alert(data.message || "送出失敗");
             btn.disabled = false;
-            btn.textContent = "送出點餐";
+            btn.textContent = "送出本場點餐";
             return;
           }
           await loadFromCloud();
@@ -507,13 +563,12 @@
       state.cart = {};
       document.getElementById("inputNote").value = "";
       btn.disabled = false;
-      btn.textContent = "送出點餐";
-      alert(`🎉 ${userName} 點餐成功！已為您切換至結單總表。`);
+      btn.textContent = "送出本場點餐";
+      alert(`🎉 ${userName} 在【${state.config[state.currentDay].label}】點餐成功！`);
       switchView("summary");
     }
 
     function renderSummary(dayOrders) {
-      // 1. 給餐廳叫餐統計
       const dishMap = {};
       dayOrders.forEach(o => {
         const key = `${o.mealName}（${o.special || '正常'}）`;
@@ -522,7 +577,7 @@
       const dishContainer = document.getElementById("dishStatsContainer");
       const dishKeys = Object.keys(dishMap);
       dishContainer.innerHTML = dishKeys.length === 0
-        ? `<p class="text-xs text-slate-400">目前尚無點餐紀錄</p>`
+        ? `<p class="text-xs text-slate-400">本場次目前尚無點餐紀錄</p>`
         : dishKeys.map(k => `
             <div class="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
               <span class="font-medium text-slate-700">${k}</span>
@@ -530,7 +585,6 @@
             </div>
           `).join("");
 
-      // 2. 個人應付金額統計
       const personMap = {};
       let grandTotal = 0;
       dayOrders.forEach(o => {
@@ -543,7 +597,7 @@
       const personContainer = document.getElementById("personStatsContainer");
       const personKeys = Object.keys(personMap);
       personContainer.innerHTML = personKeys.length === 0
-        ? `<p class="text-xs text-slate-400">目前尚無點餐紀錄</p>`
+        ? `<p class="text-xs text-slate-400">本場次目前尚無點餐紀錄</p>`
         : personKeys.map(p => `
             <div class="flex justify-between items-center border-b border-slate-100 py-1.5">
               <div>
@@ -554,12 +608,11 @@
             </div>
           `).join("") + `
             <div class="flex justify-between items-center pt-2 font-extrabold text-base text-slate-900">
-              <span>全體總金額</span>
+              <span>本場次總金額</span>
               <span class="text-amber-600">$${grandTotal}</span>
             </div>
           `;
 
-      // 3. 5大欄位完整明細表
       const tbody = document.getElementById("detailTableBody");
       tbody.innerHTML = dayOrders.map(o => `
         <tr>
@@ -576,9 +629,9 @@
       const dayConf = state.config[state.currentDay];
       const menu = getActiveMenu(state.currentDay);
       const dayOrders = state.orders.filter(o => o.day === state.currentDay);
-      if (dayOrders.length === 0) return alert("目前沒有訂單可複製");
+      if (dayOrders.length === 0) return alert("本場次目前沒有訂單可複製");
 
-      let lines = [`📣 【${dayConf.label}｜${menu.name}】點餐結單明細\n`];
+      let lines = [`📣 【${dayConf.label}｜${menu.name}】結單明細\n`];
       const personMap = {};
       let grandTotal = 0;
 
@@ -594,41 +647,121 @@
       Object.keys(personMap).forEach(p => {
         lines.push(`• ${p}：$${personMap[p].total}｜${personMap[p].list.join(" + ")}`);
       });
-      lines.push(`\n總計金額：$${grandTotal}`);
+      lines.push(`\n本場總計：$${grandTotal}`);
 
       navigator.clipboard.writeText(lines.join("\n"));
-      alert("✅ 已複製 LINE 對帳文字！可直接貼到群組收款。");
+      alert("✅ 已複製 LINE 對帳文字！");
     }
 
     function exportCSV() {
       const dayOrders = state.orders.filter(o => o.day === state.currentDay);
       if (dayOrders.length === 0) return alert("目前沒有資料可匯出");
-      let csv = "\uFEFF1.點餐人,2.選擇餐點,單價,3.餐點份數,4.餐點特殊需求,5.其他備註\n";
+      let csv = "\uFEFF場次,1.點餐人,2.選擇餐點,單價,3.餐點份數,4.餐點特殊需求,5.其他備註\n";
+      const label = state.config[state.currentDay].label;
       dayOrders.forEach(o => {
-        csv += `"${o.userName}","${o.mealName}",${o.price},${o.qty},"${o.special || ''}","${o.note || ''}"\n`;
+        csv += `"${label}","${o.userName}","${o.mealName}",${o.price},${o.qty},"${o.special || ''}","${o.note || ''}"\n`;
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `${state.config[state.currentDay].label}_點餐總表.csv`;
+      link.download = `${label}_點餐總表.csv`;
       link.click();
     }
 
     // ==========================================
-    // 團主手機管理後台邏輯
+    // 團主 6 場次管理後台邏輯
     // ==========================================
     function toggleAdminModal() {
       const modal = document.getElementById("adminModal");
       const isHidden = modal.classList.contains("hidden");
       if (isHidden) {
-        const dayConf = state.config[state.currentDay];
-        document.getElementById("adminCurrentDayTitle").textContent = dayConf.label;
-        document.getElementById("adminDayLabel").value = dayConf.label;
-        document.getElementById("adminTemplateSelect").value = dayConf.templateKey;
-        document.getElementById("adminCustomJson").value = dayConf.customMenu ? JSON.stringify(dayConf.customMenu, null, 2) : "";
-        updateAdminCloseBtnUI(dayConf.closed);
+        state.editingSlot = state.currentDay;
+        renderAdminSlotSelector();
+        renderAdminVisibilityGrid();
+        loadAdminSlotDetail();
       }
       modal.classList.toggle("hidden");
+    }
+
+    function renderAdminVisibilityGrid() {
+      const grid = document.getElementById("adminVisibilityGrid");
+      grid.innerHTML = SLOT_KEYS.map((k, idx) => {
+        const c = state.config[k];
+        const active = c.visible;
+        return `
+          <button type="button" onclick="quickToggleVisible('${k}')" class="flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold ${active ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-400 border-slate-200'}">
+            <span class="truncate">${idx + 1}. ${c.label}</span>
+            <span>${active ? '👁️顯示' : '🙈隱藏'}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function quickToggleVisible(slotKey) {
+      saveCurrentEditingSlotToMemory();
+      state.config[slotKey].visible = !state.config[slotKey].visible;
+      renderAdminVisibilityGrid();
+      renderAdminSlotSelector();
+      if (state.editingSlot === slotKey) {
+        document.getElementById("adminSlotVisible").checked = state.config[slotKey].visible;
+      }
+    }
+
+    function renderAdminSlotSelector() {
+      const sel = document.getElementById("adminSlotSelector");
+      sel.innerHTML = SLOT_KEYS.map((k, idx) => {
+        const c = state.config[k];
+        const visTag = c.visible ? "👁️顯示中" : "🙈已隱藏";
+        return `<option value="${k}" ${state.editingSlot === k ? 'selected' : ''}>場次 ${idx + 1}：${c.label} (${visTag})</option>`;
+      }).join("");
+    }
+
+    function saveCurrentEditingSlotToMemory() {
+      const k = state.editingSlot;
+      if (!k || !state.config[k]) return;
+      const slotConf = state.config[k];
+      const labelEl = document.getElementById("adminDayLabel");
+      if (!labelEl) return;
+
+      slotConf.visible = document.getElementById("adminSlotVisible").checked;
+      slotConf.label = labelEl.value.trim() || slotConf.label;
+      slotConf.templateKey = document.getElementById("adminTemplateSelect").value;
+      slotConf.closed = document.getElementById("adminToggleCloseBtn").dataset.closed === "true";
+
+      const rawJson = document.getElementById("adminCustomJson").value.trim();
+      if (slotConf.templateKey === "custom" && rawJson) {
+        try {
+          slotConf.customMenu = JSON.parse(rawJson);
+        } catch (e) {}
+      }
+    }
+
+    function loadAdminSlotDetail() {
+      const sel = document.getElementById("adminSlotSelector");
+      if (sel.value !== state.editingSlot) {
+        saveCurrentEditingSlotToMemory();
+        state.editingSlot = sel.value;
+      }
+      const slotConf = state.config[state.editingSlot];
+      document.getElementById("adminSlotVisible").checked = !!slotConf.visible;
+      document.getElementById("adminDayLabel").value = slotConf.label;
+      document.getElementById("adminTemplateSelect").value = slotConf.templateKey;
+      document.getElementById("adminCustomJson").value = slotConf.customMenu
+        ? JSON.stringify(slotConf.customMenu, null, 2)
+        : JSON.stringify(RESTAURANT_TEMPLATES[slotConf.templateKey] || RESTAURANT_TEMPLATES.thai, null, 2);
+      updateAdminCloseBtnUI(slotConf.closed);
+    }
+
+    function onAdminSlotVisibleToggle() {
+      state.config[state.editingSlot].visible = document.getElementById("adminSlotVisible").checked;
+      renderAdminVisibilityGrid();
+      renderAdminSlotSelector();
+    }
+
+    function onAdminLabelInput() {
+      state.config[state.editingSlot].label = document.getElementById("adminDayLabel").value.trim() || "未命名場次";
+      renderAdminVisibilityGrid();
+      renderAdminSlotSelector();
     }
 
     function onTemplateSelectChange() {
@@ -642,11 +775,11 @@
       const btn = document.getElementById("adminToggleCloseBtn");
       btn.dataset.closed = closed ? "true" : "false";
       if (closed) {
-        btn.textContent = "🔒 目前已結單（點擊重新開放）";
-        btn.className = "px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white";
+        btn.textContent = "🔒 已結單（點此重新開放）";
+        btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white";
       } else {
-        btn.textContent = "🟢 目前開放中（點擊一鍵結單）";
-        btn.className = "px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white";
+        btn.textContent = "🟢 開放中（點此一鍵結單）";
+        btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white";
       }
     }
 
@@ -660,15 +793,13 @@
       const pin = document.getElementById("adminPinInput").value;
       if (pin !== state.config.pin) return alert("團主密碼錯誤！");
 
-      const dayConf = state.config[state.currentDay];
-      dayConf.label = document.getElementById("adminDayLabel").value.trim() || dayConf.label;
-      dayConf.templateKey = document.getElementById("adminTemplateSelect").value;
-      dayConf.closed = document.getElementById("adminToggleCloseBtn").dataset.closed === "true";
+      saveCurrentEditingSlotToMemory();
 
+      // 驗證自訂 JSON
       const rawJson = document.getElementById("adminCustomJson").value.trim();
-      if (dayConf.templateKey === "custom" && rawJson) {
+      if (state.config[state.editingSlot].templateKey === "custom" && rawJson) {
         try {
-          dayConf.customMenu = JSON.parse(rawJson);
+          state.config[state.editingSlot].customMenu = JSON.parse(rawJson);
         } catch (e) {
           return alert("自訂 JSON 格式有誤，請檢查括號或引號！");
         }
@@ -677,6 +808,8 @@
       if (isCloudConfigured()) {
         await fetch(GAS_URL, {
           method: "POST",
+          credentials: "omit",
+          redirect: "follow",
           body: JSON.stringify({ action: "saveConfig", config: state.config })
         });
         await loadFromCloud();
@@ -690,16 +823,20 @@
     async function clearCurrentDayOrders() {
       const pin = document.getElementById("adminPinInput").value;
       if (pin !== state.config.pin) return alert("團主密碼錯誤！");
-      if (!confirm(`確定要清空【${state.config[state.currentDay].label}】的所有點餐紀錄嗎？`)) return;
+      const targetSlot = state.editingSlot;
+      const label = state.config[targetSlot].label;
+      if (!confirm(`確定要清空【${label}】的所有點餐紀錄嗎？`)) return;
 
       if (isCloudConfigured()) {
         await fetch(GAS_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "clearDayOrders", day: state.currentDay })
+          credentials: "omit",
+          redirect: "follow",
+          body: JSON.stringify({ action: "clearDayOrders", day: targetSlot })
         });
         await loadFromCloud();
       } else {
-        state.orders = state.orders.filter(o => o.day !== state.currentDay);
+        state.orders = state.orders.filter(o => o.day !== targetSlot);
         saveLocalFallback();
         renderAll();
       }
