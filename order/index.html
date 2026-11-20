@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>揪團點餐系統</title>
+  <title>團隊多場次揪團點餐系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-28 font-sans">
@@ -12,7 +12,7 @@
   <header class="bg-amber-600 text-white sticky top-0 z-30 shadow-md">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
       <div>
-        <h1 class="text-lg font-bold tracking-wide">🍱 辦公室揪團點餐</h1>
+        <h1 class="text-lg font-bold tracking-wide">🍱 揪團點餐</h1>
         <p id="syncStatus" class="text-xs text-amber-100">載入資料中...</p>
       </div>
       <div class="flex gap-2">
@@ -28,7 +28,7 @@
   </header>
 
   <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
-    <!-- 餐廳資訊、狀態橫幅與菜單照片展示區 -->
+    <!-- 餐廳資訊、狀態橫幅、菜單照片與團主取餐備註展示區 -->
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
       <div class="flex items-center justify-between">
         <div>
@@ -52,6 +52,17 @@
                class="w-full max-h-96 object-contain cursor-zoom-in mx-auto" />
         </div>
       </div>
+
+      <!-- 新增：團主暱稱與取餐地點備註（顯示在照片下方，沒設定就自動隱藏） -->
+      <div id="hostNoteWrapper" class="hidden pt-2 border-t border-slate-100">
+        <div class="bg-amber-50/90 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+          <span class="text-sm shrink-0 mt-0.5">📢</span>
+          <div class="text-xs text-amber-900 leading-relaxed">
+            <span class="font-extrabold">本團資訊（團主 / 取餐地點）：</span>
+            <span id="hostNoteText" class="font-medium whitespace-pre-line"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 功能分頁切換：我要點餐 vs 結單總表(5大欄位) -->
@@ -71,7 +82,7 @@
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">點餐人姓名 / 暱稱 *</label>
-            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：英語科 小華" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：英文科 小華" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <!-- 若該姓名已點過餐，即時顯示提醒與取消按鈕 -->
             <div id="existingUserBanner" class="hidden mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
               <span id="existingUserText" class="text-amber-800 font-bold"></span>
@@ -230,6 +241,13 @@
           <p class="text-[11px] text-slate-400">照片若放在 GitHub 同一個 `/order/` 資料夾，直接輸入檔名（如 `menu1.jpg`）即可。</p>
         </div>
 
+        <!-- 新增：團主暱稱與取餐地點備註設定 -->
+        <div class="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1">
+          <label class="block text-xs font-bold text-slate-700">📢 本團備註：團主暱稱 & 取餐地點（留空則自動隱藏）</label>
+          <input id="adminHostNote" type="text" oninput="onAdminHostNoteInput()" placeholder="例如：團主：小美 ｜ 取餐地點：3樓茶水間（12:10發放）" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          <p class="text-[11px] text-slate-400">設定後會顯示在該頁籤照片下方，若未填寫則前台不顯示。</p>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">方式 1：一鍵套用內建 10 組餐廳 JSON 模版</label>
           <select id="adminTemplateSelect" onchange="onTemplateSelectChange()" class="w-full border rounded-lg px-2.5 py-2 text-sm bg-white font-medium"></select>
@@ -283,7 +301,6 @@
         .replace(/'/g, "&#39;");
     }
 
-    // 格式化金額（避免 7.5 * 3 產生浮點數誤差）
     function formatMoney(num) {
       return Math.round((Number(num) || 0) * 100) / 100;
     }
@@ -862,19 +879,19 @@
       }
     };
 
-    // 預設 10 個頁籤分別綁定您的 9 家愛店與 1 個備用頁籤
+    // 預設 10 個頁籤（含 hostNote 團主與取餐地點備註欄位）
     function getDefaultConfig() {
       return {
-        slot1:  { visible: true,  label: "蓁蓁泰式",   templateKey: "zhenzhen", imageUrl: "", closed: false, customMenu: null },
-        slot2:  { visible: true,  label: "紅芯坊飲品", templateKey: "hongxin",  imageUrl: "", closed: false, customMenu: null },
-        slot3:  { visible: false, label: "八方雲集",   templateKey: "bafang",   imageUrl: "", closed: false, customMenu: null },
-        slot4:  { visible: false, label: "好好麵飯館", templateKey: "haohao",   imageUrl: "", closed: false, customMenu: null },
-        slot5:  { visible: false, label: "好卷不見",   templateKey: "haojuan",  imageUrl: "", closed: false, customMenu: null },
-        slot6:  { visible: false, label: "宜品乾拌麵", templateKey: "yipin",    imageUrl: "", closed: false, customMenu: null },
-        slot7:  { visible: false, label: "花蓮扁食",   templateKey: "hualien",  imageUrl: "", closed: false, customMenu: null },
-        slot8:  { visible: false, label: "宥桐麵食",   templateKey: "youtong",  imageUrl: "", closed: false, customMenu: null },
-        slot9:  { visible: false, label: "越南河粉",   templateKey: "vietnam",  imageUrl: "", closed: false, customMenu: null },
-        slot10: { visible: false, label: "備用頁籤10", templateKey: "bento",    imageUrl: "", closed: false, customMenu: null }
+        slot1:  { visible: true,  label: "蓁蓁泰式",   templateKey: "zhenzhen", imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot2:  { visible: true,  label: "紅芯坊飲品", templateKey: "hongxin",  imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot3:  { visible: false, label: "八方雲集",   templateKey: "bafang",   imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot4:  { visible: false, label: "好好麵飯館", templateKey: "haohao",   imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot5:  { visible: false, label: "好卷不見",   templateKey: "haojuan",  imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot6:  { visible: false, label: "宜品乾拌麵", templateKey: "yipin",    imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot7:  { visible: false, label: "花蓮扁食",   templateKey: "hualien",  imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot8:  { visible: false, label: "宥桐麵食",   templateKey: "youtong",  imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot9:  { visible: false, label: "越南河粉",   templateKey: "vietnam",  imageUrl: "", hostNote: "", closed: false, customMenu: null },
+        slot10: { visible: false, label: "備用頁籤10", templateKey: "bento",    imageUrl: "", hostNote: "", closed: false, customMenu: null }
       };
     }
 
@@ -910,7 +927,7 @@
           conf[k] = def[k];
         } else {
           if (typeof conf[k].imageUrl === "undefined") conf[k].imageUrl = "";
-          // 若舊版雲端設定的 templateKey 是舊代號 (如 thai, drink)，自動對應到您的新店家
+          if (typeof conf[k].hostNote === "undefined") conf[k].hostNote = "";
           if (conf[k].templateKey === "thai") conf[k].templateKey = "zhenzhen";
           if (conf[k].templateKey === "drink") conf[k].templateKey = "hongxin";
           if (conf[k].templateKey === "cafe") conf[k].templateKey = "bafang";
@@ -966,6 +983,13 @@
       const menu = getActiveMenu(slotKey);
       const url = (slotConf && slotConf.imageUrl ? slotConf.imageUrl : (menu && menu.imageUrl ? menu.imageUrl : "")).trim();
       return url;
+    }
+
+    function getActiveHostNote(slotKey) {
+      const slotConf = state.config[slotKey];
+      const menu = getActiveMenu(slotKey);
+      const note = (slotConf && slotConf.hostNote ? slotConf.hostNote : (menu && menu.hostNote ? menu.hostNote : "")).trim();
+      return note;
     }
 
     function switchDay(slotKey) {
@@ -1032,6 +1056,18 @@
         imgWrapper.classList.add("hidden");
       }
 
+      // 處理團主暱稱與取餐地點備註顯示或隱藏（位於照片下方）
+      const hostNote = getActiveHostNote(state.currentDay);
+      const hostNoteWrapper = document.getElementById("hostNoteWrapper");
+      const hostNoteText = document.getElementById("hostNoteText");
+      if (hostNote) {
+        hostNoteText.textContent = hostNote;
+        hostNoteWrapper.classList.remove("hidden");
+      } else {
+        hostNoteText.textContent = "";
+        hostNoteWrapper.classList.add("hidden");
+      }
+
       // 分頁按鈕與訂單數
       const dayOrders = state.orders.filter(o => o.day === state.currentDay);
       document.getElementById("orderCountBadge").textContent = dayOrders.length;
@@ -1057,7 +1093,6 @@
       renderSummary(dayOrders);
     }
 
-    // 渲染商品分類快速篩選列（方便瀏覽 50+ 品項的大菜單）
     function renderCategoryBar(menu) {
       const bar = document.getElementById("categoryFilterBar");
       const cats = ["全部"];
@@ -1100,7 +1135,6 @@
       (menu.items || []).forEach((item, idx) => {
         const itemCat = item.category || "品項";
         const cartItem = state.cart[idx] || { qty: 0, special: defaultTag };
-        // 若選了特定分類，只顯示該分類或「已經有選購份數」的品項
         if (state.currentCategory !== "全部" && itemCat !== state.currentCategory && cartItem.qty === 0) {
           return;
         }
@@ -1371,10 +1405,16 @@
     function copyLineSummary() {
       const dayConf = state.config[state.currentDay];
       const menu = getActiveMenu(state.currentDay);
+      const hostNote = getActiveHostNote(state.currentDay);
       const dayOrders = state.orders.filter(o => o.day === state.currentDay);
       if (dayOrders.length === 0) return alert("本場次目前沒有訂單可複製");
 
-      let lines = [`📣 【${dayConf.label}｜${menu.name}】結單明細\n`];
+      let lines = [`📣 【${dayConf.label}｜${menu.name}】結單明細`];
+      if (hostNote) {
+        lines.push(`📢 ${hostNote}`);
+      }
+      lines.push("");
+
       const personMap = {};
       let grandTotal = 0;
 
@@ -1489,6 +1529,10 @@
             document.getElementById("adminImageUrl").value = parsed.imageUrl;
             state.config[state.editingSlot].imageUrl = parsed.imageUrl;
           }
+          if (parsed.hostNote) {
+            document.getElementById("adminHostNote").value = parsed.hostNote;
+            state.config[state.editingSlot].hostNote = parsed.hostNote;
+          }
           state.config[state.editingSlot].templateKey = "custom";
           state.config[state.editingSlot].customMenu = parsed;
           hintEl.textContent = `✅ 已成功匯入「${parsed.name}」（共 ${parsed.items.length} 道品項），請按下方儲存！`;
@@ -1510,6 +1554,8 @@
       }
       const imgUrl = document.getElementById("adminImageUrl").value.trim();
       if (imgUrl) menuObj.imageUrl = imgUrl;
+      const hostNote = document.getElementById("adminHostNote").value.trim();
+      if (hostNote) menuObj.hostNote = hostNote;
 
       const blob = new Blob([JSON.stringify(menuObj, null, 2)], { type: "application/json;charset=utf-8;" });
       const link = document.createElement("a");
@@ -1565,6 +1611,7 @@
       slotConf.visible = document.getElementById("adminSlotVisible").checked;
       slotConf.label = labelEl.value.trim() || slotConf.label;
       slotConf.imageUrl = (document.getElementById("adminImageUrl")?.value || "").trim();
+      slotConf.hostNote = (document.getElementById("adminHostNote")?.value || "").trim();
       slotConf.templateKey = document.getElementById("adminTemplateSelect").value;
       slotConf.closed = document.getElementById("adminToggleCloseBtn").dataset.closed === "true";
 
@@ -1586,6 +1633,7 @@
       document.getElementById("adminSlotVisible").checked = !!slotConf.visible;
       document.getElementById("adminDayLabel").value = slotConf.label;
       document.getElementById("adminImageUrl").value = slotConf.imageUrl || "";
+      document.getElementById("adminHostNote").value = slotConf.hostNote || "";
       document.getElementById("adminTemplateSelect").value = RESTAURANT_TEMPLATES[slotConf.templateKey] ? slotConf.templateKey : (slotConf.templateKey === "custom" ? "custom" : "zhenzhen");
       document.getElementById("adminCustomJson").value = (slotConf.templateKey === "custom" && slotConf.customMenu)
         ? JSON.stringify(slotConf.customMenu, null, 2)
@@ -1609,6 +1657,10 @@
 
     function onAdminImageInput() {
       state.config[state.editingSlot].imageUrl = document.getElementById("adminImageUrl").value.trim();
+    }
+
+    function onAdminHostNoteInput() {
+      state.config[state.editingSlot].hostNote = document.getElementById("adminHostNote").value.trim();
     }
 
     function onTemplateSelectChange() {
