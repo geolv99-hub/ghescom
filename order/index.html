@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <!-- 動態場次切換列 (最多顯示 6 場，由團主自由開關) -->
+    <!-- 動態場次切換列 (最多可同時開啟 10 個頁籤，由團主自由選擇顯示或隱藏) -->
     <div class="max-w-md mx-auto px-4 pb-2.5">
       <div id="slotTabsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
     </div>
@@ -32,7 +32,7 @@
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
       <div class="flex items-center justify-between">
         <div>
-          <span class="text-xs text-slate-400 font-medium">目前選擇場次與店家</span>
+          <span class="text-xs text-slate-400 font-medium">目前選擇頁籤與店家</span>
           <h2 id="restaurantTitle" class="text-base font-extrabold text-slate-800 mt-0.5"></h2>
         </div>
         <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold shrink-0"></span>
@@ -63,7 +63,7 @@
     <!-- 視圖 1：點餐區 -->
     <div id="view-order" class="space-y-4">
       <div id="closedNotice" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-center text-sm font-bold">
-        🔒 本場次已經結單囉！請切換至上方其他場次，或點「結單總表」查看明細。
+        🔒 本場次已經結單囉！請切換至上方其他頁籤，或點「結單總表」查看明細。
       </div>
 
       <div id="orderFormArea" class="space-y-4">
@@ -83,6 +83,9 @@
             <input id="inputNote" type="text" maxlength="60" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
+
+        <!-- 商品分類快速篩選按鈕列 -->
+        <div id="categoryFilterBar" class="flex gap-1.5 overflow-x-auto pb-1"></div>
 
         <!-- 2. 選擇餐點 & 3. 份數 & 4. 特殊需求 -->
         <div class="space-y-2.5" id="menuListContainer"></div>
@@ -189,41 +192,41 @@
     </div>
   </div>
 
-  <!-- 彈窗 C：團主手機管理後台（已通過密碼驗證才顯示） -->
+  <!-- 彈窗 C：團主手機管理後台（支援 10 個獨立店家頁籤開關與設定） -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-extrabold text-base">⚙️ 團主管理後台（最多 6 場次）</h3>
+        <h3 class="font-extrabold text-base">⚙️ 團主管理後台（10 個獨立頁籤）</h3>
         <button onclick="closeAdminModal()" class="text-slate-400 text-lg font-bold">✕</button>
       </div>
 
-      <!-- 步驟 1：勾選要在前台顯示哪些場次 -->
+      <!-- 步驟 1：勾選要在前台顯示哪些頁籤（共 10 個） -->
       <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-        <label class="block text-xs font-bold text-slate-700">👁️ 點選要「開啟顯示」的場次（前台將同步顯示）</label>
+        <label class="block text-xs font-bold text-slate-700">👁️ 點選要「開啟顯示」的店家頁籤（共 10 組可自由開關）</label>
         <div id="adminVisibilityGrid" class="grid grid-cols-2 gap-1.5"></div>
       </div>
 
-      <!-- 步驟 2：選擇要編輯哪一個場次的詳細菜單 -->
+      <!-- 步驟 2：選擇要編輯哪一個頁籤的詳細菜單 -->
       <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-3">
         <div>
-          <label class="block text-xs font-bold text-amber-900 mb-1">✏️ 選擇要編輯的場次</label>
+          <label class="block text-xs font-bold text-amber-900 mb-1">✏️ 選擇要編輯的頁籤 (1 ~ 10)</label>
           <select id="adminSlotSelector" onchange="loadAdminSlotDetail()" class="w-full border border-amber-300 rounded-lg px-2.5 py-2 text-sm font-bold bg-white text-amber-800"></select>
         </div>
 
         <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border">
-          <span class="text-xs font-bold text-slate-700">在前台顯示此場次</span>
+          <span class="text-xs font-bold text-slate-700">在前台顯示此頁籤</span>
           <input id="adminSlotVisible" type="checkbox" onchange="onAdminSlotVisibleToggle()" class="w-4 h-4 accent-amber-600" />
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">場次按鈕名稱（如：週四午餐、週四飲料）</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">頁籤按鈕名稱（如：週四午餐、八方雲集、週五飲料）</label>
           <input id="adminDayLabel" type="text" oninput="onAdminLabelInput()" class="w-full border rounded-lg px-2.5 py-1.5 text-sm bg-white" />
         </div>
 
-        <!-- 新增：店家菜單照片連結 / 檔名設定 -->
+        <!-- 店家菜單照片連結 / 檔名設定 -->
         <div class="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1">
           <label class="block text-xs font-bold text-slate-700">🖼️ 店家菜單照片連結 / 檔名（留空則自動隱藏）</label>
-          <input id="adminImageUrl" type="text" oninput="onAdminImageInput()" placeholder="同資料夾直接填檔名如 thai.jpg 或完整圖片網址" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          <input id="adminImageUrl" type="text" oninput="onAdminImageInput()" placeholder="同資料夾直接填檔名如 bafang.jpg 或完整圖片網址" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
           <p class="text-[11px] text-slate-400">照片若放在 GitHub 同一個 `/order/` 資料夾，直接輸入檔名（如 `menu1.jpg`）即可。</p>
         </div>
 
@@ -266,9 +269,9 @@
     // ====================================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz9dpaum4R4wgPoLK2gywoKjBLsO8VR3SGDD--ocE8scIB0S12fTUMgGT9XEYokIktT/exec";
 
-    const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6"];
+    // 支援 10 個獨立頁籤 (slot1 ~ slot10)
+    const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8", "slot9", "slot10"];
 
-    // 暫存已通過驗證的團主密碼
     let verifiedAdminPin = "";
 
     function escapeHTML(str) {
@@ -280,25 +283,572 @@
         .replace(/'/g, "&#39;");
     }
 
+    // 格式化金額（避免 7.5 * 3 產生浮點數誤差）
+    function formatMoney(num) {
+      return Math.round((Number(num) || 0) * 100) / 100;
+    }
+
     // ====================================================
-    // 內建 10 組常用餐廳與飲料 JSON 模版庫
+    // 內建您提供的 9 家完整店家 JSON 模版 + 1 組人氣便當備用模版
     // ====================================================
     const RESTAURANT_TEMPLATES = {
-      thai: {
-        name: "🐘 1. 泰美味泰式料理",
+      bafang: {
+        name: "🥟 八方雲集",
         imageUrl: "",
-        tags: ["正常", "不辣", "微辣", "小辣", "中辣", "大辣", "飯少", "不加香菜"],
+        tags: ["正常", "不加蔥", "不加酸菜", "不辣", "小辣", "中辣", "大辣", "加麵"],
         items: [
-          { name: "泰式打拋豬肉飯", price: 130, category: "主餐" },
-          { name: "綠咖哩椰汁雞飯", price: 140, category: "主餐" },
-          { name: "泰式酸辣海鮮河粉", price: 150, category: "主餐" },
-          { name: "泰式椒麻雞腿飯", price: 145, category: "主餐" },
-          { name: "月亮蝦餅 (單點)", price: 180, category: "單點" },
-          { name: "涼拌青木瓜絲", price: 100, category: "單點" }
+          { name: "招牌鍋貼", price: 7, category: "鍋貼" },
+          { name: "韭菜鍋貼", price: 7, category: "鍋貼" },
+          { name: "韓式辣味鍋貼", price: 7, category: "鍋貼" },
+          { name: "咖哩鍋貼", price: 7, category: "鍋貼" },
+          { name: "玉米鍋貼", price: 7, category: "鍋貼" },
+          { name: "新蔬食鍋貼 (鍋邊素)", price: 7.5, category: "鍋貼" },
+          { name: "招牌水餃", price: 7, category: "水餃" },
+          { name: "韭菜水餃", price: 7, category: "水餃" },
+          { name: "韓式辣味水餃", price: 7, category: "水餃" },
+          { name: "咖哩水餃", price: 7, category: "水餃" },
+          { name: "玉米水餃", price: 7, category: "水餃" },
+          { name: "新蔬食水餃 (鍋邊素)", price: 7.5, category: "水餃" },
+          { name: "鮮蝦水餃", price: 10.5, category: "水餃" },
+          { name: "酸辣湯餃 (8顆招)", price: 90, category: "湯餃" },
+          { name: "玉米湯餃 (8顆招)", price: 90, category: "湯餃" },
+          { name: "帶骨牛小排麵 (紅燒)", price: 299, category: "新品" },
+          { name: "帶骨牛小排麵 (清燉)", price: 299, category: "新品" },
+          { name: "紅燒/清燉牛肉湯", price: 158, category: "金牌牛肉系列" },
+          { name: "紅燒/清燉牛肉麵", price: 168, category: "金牌牛肉系列" },
+          { name: "紅燒/清燉牛肉冬粉", price: 168, category: "金牌牛肉系列" },
+          { name: "麻辣牛肉湯", price: 168, category: "金牌牛肉系列" },
+          { name: "麻辣牛肉麵", price: 178, category: "金牌牛肉系列" },
+          { name: "麻辣牛肉冬粉", price: 178, category: "金牌牛肉系列" },
+          { name: "牛湯餃 (8顆招牌-紅燒)", price: 120, category: "金牌牛肉系列" },
+          { name: "牛湯餃 (8顆招牌-麻辣)", price: 125, category: "金牌牛肉系列" },
+          { name: "牛湯珍珠餛飩 (10顆-紅燒)", price: 125, category: "金牌牛肉系列" },
+          { name: "牛湯珍珠餛飩 (10顆-麻辣)", price: 130, category: "金牌牛肉系列" },
+          { name: "牛湯菜肉大餛飩 (6顆-紅燒)", price: 125, category: "金牌牛肉系列" },
+          { name: "牛湯菜肉大餛飩 (6顆-麻辣)", price: 130, category: "金牌牛肉系列" },
+          { name: "古早味乾麵", price: 45, category: "乾麵" },
+          { name: "麻醬乾麵", price: 55, category: "乾麵" },
+          { name: "招牌乾麵 (微辣)", price: 55, category: "乾麵" },
+          { name: "紹辣乾麵", price: 60, category: "乾麵" },
+          { name: "古早味湯麵", price: 45, category: "湯麵" },
+          { name: "酸辣湯麵", price: 70, category: "湯麵" },
+          { name: "珍珠餛飩麵", price: 70, category: "湯麵" },
+          { name: "菜肉大餛飩麵", price: 80, category: "湯麵" },
+          { name: "榨菜肉絲麵", price: 80, category: "湯麵" },
+          { name: "紹辣珍珠餛飩麵", price: 80, category: "湯麵" },
+          { name: "紹辣菜肉大餛飩麵", price: 90, category: "湯麵" },
+          { name: "梁師傅排骨麵", price: 105, category: "湯麵" },
+          { name: "珍珠抄手 (小顆8顆-紅油)", price: 60, category: "抄手" },
+          { name: "珍珠抄手 (小顆8顆-和風)", price: 60, category: "抄手" },
+          { name: "菜肉大抄手 (大顆6顆-紅油)", price: 75, category: "抄手" },
+          { name: "菜肉大抄手 (大顆6顆-和風)", price: 75, category: "抄手" },
+          { name: "酸辣湯", price: 35, category: "湯品" },
+          { name: "玉米濃湯", price: 35, category: "湯品" },
+          { name: "蘿蔔湯", price: 35, category: "湯品" },
+          { name: "原塊花枝魚丸湯", price: 40, category: "湯品" },
+          { name: "珍珠餛飩湯", price: 50, category: "湯品" },
+          { name: "菜肉大餛飩湯", price: 60, category: "湯品" },
+          { name: "香濃豆漿 (有糖)", price: 20, category: "飲品" },
+          { name: "香濃豆漿 (無加糖)", price: 20, category: "飲品" },
+          { name: "黑豆漿", price: 20, category: "飲品" },
+          { name: "真傳特調紅茶", price: 20, category: "飲品" },
+          { name: "滷蛋", price: 15, category: "小菜" },
+          { name: "黃金泡菜", price: 30, category: "小菜" },
+          { name: "涼拌豆腐 (蠔油)", price: 30, category: "小菜" },
+          { name: "涼拌豆腐 (麻醬)", price: 30, category: "小菜" },
+          { name: "涼拌豆腐 (紅油)", price: 30, category: "小菜" },
+          { name: "黃金豆腐", price: 35, category: "小菜" },
+          { name: "燙青菜", price: 35, category: "小菜" },
+          { name: "燉蘿蔔", price: 35, category: "小菜" },
+          { name: "和風秋葵/薄鹽毛豆", price: 35, category: "小菜" },
+          { name: "家常小菜", price: 40, category: "小菜" },
+          { name: "小菜雙拼", price: 40, category: "小菜" },
+          { name: "柚香蘿蔔", price: 40, category: "小菜" },
+          { name: "皮蛋豆腐 (整粒)", price: 45, category: "小菜" },
+          { name: "古早味排骨", price: 68, category: "小菜" }
+        ]
+      },
+      haohao: {
+        name: "🍜 好好麵飯館",
+        imageUrl: "",
+        tags: ["正常", "家常麵", "陽春麵", "細麵", "冬粉", "不辣", "小辣", "不要香菜/蔥"],
+        items: [
+          { name: "牛三寶麵 (小)", price: 190, category: "湯麵" },
+          { name: "牛三寶麵 (大)", price: 220, category: "湯麵" },
+          { name: "半筋半肉麵 (小)", price: 180, category: "湯麵" },
+          { name: "半筋半肉麵 (大)", price: 210, category: "湯麵" },
+          { name: "牛肚麵 (小)", price: 160, category: "湯麵" },
+          { name: "牛肚麵 (大)", price: 190, category: "湯麵" },
+          { name: "牛肉麵 (小)", price: 150, category: "湯麵" },
+          { name: "牛肉麵 (大)", price: 180, category: "湯麵" },
+          { name: "牛肉飯 (小)", price: 150, category: "湯麵" },
+          { name: "牛肉飯 (大)", price: 180, category: "湯麵" },
+          { name: "牛肉湯麵 (小)", price: 90, category: "湯麵" },
+          { name: "牛肉湯麵 (大)", price: 120, category: "湯麵" },
+          { name: "牛肉湯飯 (小)", price: 90, category: "湯麵" },
+          { name: "牛肉湯飯 (大)", price: 120, category: "湯麵" },
+          { name: "榨菜肉絲麵 (湯-小)", price: 80, category: "湯麵" },
+          { name: "榨菜肉絲麵 (湯-大)", price: 110, category: "湯麵" },
+          { name: "魚丸麵 (小)", price: 80, category: "湯麵" },
+          { name: "魚丸麵 (大)", price: 110, category: "湯麵" },
+          { name: "貢丸麵 (小)", price: 80, category: "湯麵" },
+          { name: "貢丸麵 (大)", price: 110, category: "湯麵" },
+          { name: "酸辣麵 (小)", price: 100, category: "湯麵" },
+          { name: "酸辣麵 (大)", price: 130, category: "湯麵" },
+          { name: "酸辣飯 (小)", price: 100, category: "湯麵" },
+          { name: "酸辣飯 (大)", price: 130, category: "湯麵" },
+          { name: "麻醬麵 (小)", price: 75, category: "乾麵" },
+          { name: "麻醬麵 (大)", price: 105, category: "乾麵" },
+          { name: "炸醬麵 (小)", price: 80, category: "乾麵" },
+          { name: "炸醬麵 (大)", price: 110, category: "乾麵" },
+          { name: "雙醬麵 (小)", price: 85, category: "乾麵" },
+          { name: "雙醬麵 (大)", price: 115, category: "乾麵" },
+          { name: "咖哩雞麵 (小)", price: 120, category: "乾麵" },
+          { name: "咖哩雞麵 (大)", price: 150, category: "乾麵" },
+          { name: "咖哩豬麵 (小)", price: 120, category: "乾麵" },
+          { name: "咖哩豬麵 (大)", price: 150, category: "乾麵" },
+          { name: "榨菜肉絲麵 (乾-小)", price: 75, category: "乾麵" },
+          { name: "榨菜肉絲麵 (乾-大)", price: 105, category: "乾麵" },
+          { name: "手桿皮水餃 (每顆/最少5顆)", price: 8, category: "水餃" },
+          { name: "咖哩雞飯 (小)", price: 120, category: "咖哩飯" },
+          { name: "咖哩雞飯 (大)", price: 150, category: "咖哩飯" },
+          { name: "咖哩豬飯 (小)", price: 120, category: "咖哩飯" },
+          { name: "咖哩豬飯 (大)", price: 150, category: "咖哩飯" },
+          { name: "牛肉湯餃 (小/8顆)", price: 110, category: "湯餃" },
+          { name: "牛肉湯餃 (大/13顆)", price: 140, category: "湯餃" },
+          { name: "酸辣湯餃 (小/8顆)", price: 110, category: "湯餃" },
+          { name: "酸辣湯餃 (大/13顆)", price: 140, category: "湯餃" },
+          { name: "榨菜肉絲餃 (小/8顆)", price: 110, category: "湯餃" },
+          { name: "榨菜肉絲餃 (大/13顆)", price: 140, category: "湯餃" },
+          { name: "牛三寶湯", price: 180, category: "湯類" },
+          { name: "半筋半肉湯", price: 170, category: "湯類" },
+          { name: "牛肉湯", price: 140, category: "湯類" },
+          { name: "牛肉清湯", price: 40, category: "湯類" },
+          { name: "酸辣湯", price: 40, category: "湯類" },
+          { name: "蛋花湯", price: 40, category: "湯類" },
+          { name: "貢丸湯", price: 40, category: "湯類" },
+          { name: "魚丸湯", price: 40, category: "湯類" },
+          { name: "榨菜肉絲湯", price: 40, category: "湯類" },
+          { name: "燙青菜", price: 40, category: "其他" },
+          { name: "小菜", price: 40, category: "其他" },
+          { name: "滷蛋/荷包蛋", price: 15, category: "其他" },
+          { name: "白飯", price: 15, category: "其他" }
+        ]
+      },
+      haojuan: {
+        name: "🍙 好卷不見 (樹林店)",
+        imageUrl: "",
+        tags: ["正常", "飯少", "加飯", "不辣", "小辣", "中辣", "大辣", "不要生菜/紅蘿蔔"],
+        items: [
+          { name: "泡菜燒肉 (海苔飯卷)", price: 70, category: "海苔飯卷-泡菜系" },
+          { name: "泡菜牛肉 (海苔飯卷)", price: 85, category: "海苔飯卷-泡菜系" },
+          { name: "泡菜鮪魚 (海苔飯卷)", price: 75, category: "海苔飯卷-泡菜系" },
+          { name: "泡菜燻雞 (海苔飯卷)", price: 75, category: "海苔飯卷-泡菜系" },
+          { name: "泡菜豬排 (海苔飯卷)", price: 75, category: "海苔飯卷-泡菜系" },
+          { name: "辣味燒肉 (海苔飯卷)", price: 75, category: "海苔飯卷-辣味系" },
+          { name: "辣味牛肉 (海苔飯卷)", price: 85, category: "海苔飯卷-辣味系" },
+          { name: "辣味豬排 (海苔飯卷)", price: 75, category: "海苔飯卷-辣味系" },
+          { name: "辣味燻雞 (海苔飯卷)", price: 75, category: "海苔飯卷-辣味系" },
+          { name: "辣味雞條 (海苔飯卷)", price: 75, category: "海苔飯卷-辣味系" },
+          { name: "原味燒肉 (海苔飯卷)", price: 70, category: "海苔飯卷-原味系" },
+          { name: "原味牛肉 (海苔飯卷)", price: 85, category: "海苔飯卷-原味系" },
+          { name: "原味豬排 (海苔飯卷)", price: 70, category: "海苔飯卷-原味系" },
+          { name: "原味燻雞 (海苔飯卷)", price: 70, category: "海苔飯卷-原味系" },
+          { name: "原味雞條 (海苔飯卷)", price: 70, category: "海苔飯卷-原味系" },
+          { name: "大溪香腸 (海苔飯卷)", price: 60, category: "海苔飯卷-幼好食" },
+          { name: "肉鬆玉米蛋 (海苔飯卷)", price: 60, category: "海苔飯卷-幼好食" },
+          { name: "鮪魚玉米 (海苔飯卷)", price: 60, category: "海苔飯卷-幼好食" },
+          { name: "蛋蛋雞卷 (無飯)", price: 85, category: "海苔飯卷-幼好食" },
+          { name: "牛蒡香鬆 (素)", price: 70, category: "海苔飯卷-素食系" },
+          { name: "全部是菜 (素) (海苔飯卷)", price: 70, category: "海苔飯卷-素食系" },
+          { name: "香鬆玉米蛋 (蛋素)", price: 60, category: "海苔飯卷-素食系" },
+          { name: "龍蝦沙拉 (海苔飯卷)", price: 85, category: "海苔飯卷-海洋系" },
+          { name: "龍蝦鮪魚 (海苔飯卷)", price: 85, category: "海苔飯卷-海洋系" },
+          { name: "龍蝦蟹肉 (海苔飯卷)", price: 85, category: "海苔飯卷-海洋系" },
+          { name: "德國香腸飯卷", price: 80, category: "獨家風味" },
+          { name: "GDF原/辣三軍飯卷", price: 90, category: "獨家風味" },
+          { name: "GDF原/辣三軍拌飯", price: 110, category: "獨家風味" },
+          { name: "烏龍冷麵 (夏季供應)", price: 90, category: "獨家風味" },
+          { name: "芽花湯泡飯", price: 55, category: "獨家風味" },
+          { name: "辣炒年糕", price: 90, category: "年糕系列" },
+          { name: "不辣的炒年糕", price: 90, category: "年糕系列" },
+          { name: "年糕炒泡麵 (原味/辣味)", price: 100, category: "年糕系列" },
+          { name: "辛拉麵", price: 100, category: "韓國辛拉麵" },
+          { name: "辛拉麵 (加泡菜/牛奶/起司)", price: 110, category: "韓國辛拉麵" },
+          { name: "奶司Q拉麵", price: 120, category: "韓國辛拉麵" },
+          { name: "燒肉 (泡菜系拌飯)", price: 105, category: "拌飯/丼飯-泡菜系" },
+          { name: "豬排 (泡菜系拌飯)", price: 105, category: "拌飯/丼飯-泡菜系" },
+          { name: "嫩雞 (泡菜系拌飯)", price: 105, category: "拌飯/丼飯-泡菜系" },
+          { name: "牛肉 (泡菜系拌飯)", price: 110, category: "拌飯/丼飯-泡菜系" },
+          { name: "燒肉豬排 (雙拼系拌飯)", price: 105, category: "拌飯/丼飯-雙拼系" },
+          { name: "燒肉香腸 (雙拼系拌飯)", price: 105, category: "拌飯/丼飯-雙拼系" },
+          { name: "燒肉嫩雞 (雙拼系拌飯)", price: 105, category: "拌飯/丼飯-雙拼系" },
+          { name: "燒肉牛肉 (雙拼系拌飯)", price: 110, category: "拌飯/丼飯-雙拼系" },
+          { name: "香腸豬排 (雙拼系拌飯)", price: 110, category: "拌飯/丼飯-雙拼系" },
+          { name: "燒肉 (原味系拌飯)", price: 100, category: "拌飯/丼飯-原味系" },
+          { name: "牛肉 (原味系拌飯)", price: 105, category: "拌飯/丼飯-原味系" },
+          { name: "豬排 (原味系拌飯)", price: 100, category: "拌飯/丼飯-原味系" },
+          { name: "嫩雞 (原味系拌飯)", price: 100, category: "拌飯/丼飯-原味系" },
+          { name: "全部是菜 (素) (拌飯)", price: 100, category: "拌飯/丼飯-原味系" },
+          { name: "經典烤肉拌飯 (辣)", price: 130, category: "拌飯/丼飯" },
+          { name: "壽喜豬肉丼飯", price: 95, category: "拌飯/丼飯" },
+          { name: "壽喜牛肉丼飯", price: 110, category: "拌飯/丼飯" },
+          { name: "忠武飯卷", price: 110, category: "餐盒系列" },
+          { name: "忠武飯卷 (加雞/豬or牛)", price: 120, category: "餐盒系列" },
+          { name: "輕食餐盒 (無飯)", price: 115, category: "餐盒系列" },
+          { name: "輕食餐盒 (無飯+雞/豬or牛)", price: 125, category: "餐盒系列" },
+          { name: "忠武兒童餐盒", price: 85, category: "餐盒系列" },
+          { name: "速便當 (平日午餐供應)", price: 95, category: "餐盒系列" },
+          { name: "柴魚烏龍麵", price: 90, category: "烏龍麵" },
+          { name: "泡菜烏龍麵", price: 100, category: "烏龍麵" },
+          { name: "麻辣燒肉 (乾) 烏龍麵", price: 100, category: "烏龍麵" },
+          { name: "壽喜豬肉 (乾) 烏龍麵", price: 95, category: "烏龍麵" },
+          { name: "壽喜嫩雞 (乾) 烏龍麵", price: 95, category: "烏龍麵" },
+          { name: "韓式甜漬蘿蔔", price: 40, category: "經典小菜" },
+          { name: "涼拌海帶芽", price: 40, category: "經典小菜" },
+          { name: "日式牛蒡絲", price: 40, category: "經典小菜" },
+          { name: "韓式泡菜", price: 55, category: "經典小菜" },
+          { name: "日式嫩蘿蔔", price: 55, category: "經典小菜" },
+          { name: "醬燒杏包菇", price: 70, category: "經典小菜" },
+          { name: "麥仔香紅茶 (500cc)", price: 25, category: "飲料500cc" },
+          { name: "麥仔香奶茶 (500cc)", price: 35, category: "飲料500cc" },
+          { name: "蛋花湯", price: 25, category: "湯品" },
+          { name: "海帶芽湯", price: 35, category: "湯品" },
+          { name: "玉米濃湯 (冬季供應)", price: 50, category: "湯品" }
+        ]
+      },
+      yipin: {
+        name: "🍜 宜品福州乾拌麵",
+        imageUrl: "",
+        tags: ["正常", "麵硬", "麵軟", "不辣", "小辣", "中辣", "大辣", "不要香菜/蔥"],
+        items: [
+          { name: "乾拌麵 (小)", price: 40, category: "乾麵類" },
+          { name: "乾拌麵 (大)", price: 70, category: "乾麵類" },
+          { name: "肉燥麵 (小)", price: 50, category: "乾麵類" },
+          { name: "肉燥麵 (大)", price: 75, category: "乾麵類" },
+          { name: "麻醬麵", price: 65, category: "乾麵類" },
+          { name: "紅油抄手拌麵", price: 95, category: "乾麵類" },
+          { name: "白油抄手拌麵", price: 95, category: "乾麵類" },
+          { name: "香煎雞胸拌麵 (中麵)", price: 110, category: "乾麵類" },
+          { name: "泰式肉末酸筍拌麵 (中麵)", price: 100, category: "乾麵類" },
+          { name: "肉燥飯", price: 35, category: "單點" },
+          { name: "香煎雞胸肉 (一份)", price: 85, category: "單點" },
+          { name: "綜合湯 (餛飩+蛋包+各式丸子)", price: 70, category: "湯類" },
+          { name: "三色湯 (餛飩+蛋包+福州丸)", price: 60, category: "湯類" },
+          { name: "餛飩湯", price: 55, category: "湯類" },
+          { name: "榨菜肉絲湯", price: 50, category: "湯類" },
+          { name: "燕丸湯", price: 45, category: "湯類" },
+          { name: "福州丸湯", price: 45, category: "湯類" },
+          { name: "鱈魚丸湯", price: 45, category: "湯類" },
+          { name: "貢丸湯", price: 45, category: "湯類" },
+          { name: "綜合麵", price: 110, category: "湯麵類" },
+          { name: "三色麵", price: 100, category: "湯麵類" },
+          { name: "餛飩麵", price: 95, category: "湯麵類" },
+          { name: "鱈魚丸麵", price: 80, category: "湯麵類" },
+          { name: "貢丸麵", price: 80, category: "湯麵類" },
+          { name: "榨菜肉絲麵", price: 80, category: "湯麵類" },
+          { name: "紅油抄手", price: 65, category: "小菜/點心" },
+          { name: "燙青菜", price: 45, category: "小菜/點心" },
+          { name: "小菜 (45元)", price: 45, category: "小菜/點心" },
+          { name: "小菜 (50元)", price: 50, category: "小菜/點心" },
+          { name: "小菜 (60元)", price: 60, category: "小菜/點心" },
+          { name: "有機玉露綠茶", price: 49, category: "飲料" },
+          { name: "有機蜜香紅茶", price: 49, category: "飲料" },
+          { name: "飲料", price: 20, category: "飲料" },
+          { name: "生餛飩 (20粒)", price: 100, category: "生鮮外帶" },
+          { name: "生福州丸 (9粒)", price: 100, category: "生鮮外帶" },
+          { name: "生燕丸 (12粒)", price: 100, category: "生鮮外帶" }
+        ]
+      },
+      hualien: {
+        name: "🥟 花蓮扁食之家",
+        imageUrl: "",
+        tags: ["正常", "不辣", "小辣", "中辣", "大辣", "不蔥", "不蒜", "麵硬"],
+        items: [
+          { name: "鮮蝦紅油炒手 (不加麵)", price: 105, category: "紅油炒手" },
+          { name: "鮮蝦紅油炒手 (加麵)", price: 115, category: "紅油炒手" },
+          { name: "鮮肉紅油炒手 (不加麵)", price: 90, category: "紅油炒手" },
+          { name: "鮮肉紅油炒手 (加麵)", price: 100, category: "紅油炒手" },
+          { name: "菜肉紅油炒手 (不加麵)", price: 90, category: "紅油炒手" },
+          { name: "菜肉紅油炒手 (加麵)", price: 100, category: "紅油炒手" },
+          { name: "鮮蝦扁食麵 (小)", price: 95, category: "麵食類" },
+          { name: "鮮蝦扁食麵 (大)", price: 105, category: "麵食類" },
+          { name: "鮮蝦扁食冬粉", price: 95, category: "麵食類" },
+          { name: "鮮肉扁食麵 (小)", price: 80, category: "麵食類" },
+          { name: "鮮肉扁食麵 (大)", price: 90, category: "麵食類" },
+          { name: "鮮肉扁食冬粉", price: 80, category: "麵食類" },
+          { name: "菜肉扁食麵 (小)", price: 80, category: "麵食類" },
+          { name: "菜肉扁食麵 (大)", price: 90, category: "麵食類" },
+          { name: "菜肉扁食冬粉", price: 80, category: "麵食類" },
+          { name: "酸辣湯麵 (小)", price: 50, category: "麵食類" },
+          { name: "酸辣湯麵 (大)", price: 60, category: "麵食類" },
+          { name: "蟹黃湯麵 (小)", price: 50, category: "麵食類" },
+          { name: "蟹黃湯麵 (大)", price: 60, category: "麵食類" },
+          { name: "紅油辣麵 (小)", price: 50, category: "麵食類" },
+          { name: "紅油辣麵 (大)", price: 60, category: "麵食類" },
+          { name: "蘭陽乾麵 (小)", price: 50, category: "麵食類" },
+          { name: "蘭陽乾麵 (大)", price: 60, category: "麵食類" },
+          { name: "鮮蝦扁食湯", price: 95, category: "湯類" },
+          { name: "鮮肉扁食湯", price: 80, category: "湯類" },
+          { name: "菜肉扁食湯", price: 80, category: "湯類" },
+          { name: "酸辣湯", price: 40, category: "湯類" },
+          { name: "蟹黃湯", price: 40, category: "湯類" },
+          { name: "魚丸湯", price: 40, category: "湯類" },
+          { name: "海苔青菜蛋花湯", price: 40, category: "湯類" },
+          { name: "蘋果咖哩飯", price: 90, category: "飯類" },
+          { name: "蕃茄牛腩飯", price: 110, category: "飯類" },
+          { name: "香辣拌飯 (小)", price: 50, category: "飯類" },
+          { name: "香辣拌飯 (大)", price: 60, category: "飯類" },
+          { name: "肉燥飯 (小)", price: 35, category: "飯類" },
+          { name: "肉燥飯 (大)", price: 45, category: "飯類" },
+          { name: "干貝水餃 (10粒)", price: 90, category: "水餃類" },
+          { name: "蟹黃湯餃", price: 90, category: "水餃類" },
+          { name: "蟹黃湯餃 (加飯/麵/冬粉)", price: 100, category: "水餃類" },
+          { name: "酸辣湯餃", price: 90, category: "水餃類" },
+          { name: "酸辣湯餃 (加飯/麵/冬粉)", price: 100, category: "水餃類" },
+          { name: "蟹黃扁食煲", price: 85, category: "煲類" },
+          { name: "蟹黃扁食煲 (加飯/麵/冬粉)", price: 95, category: "煲類" },
+          { name: "酸辣扁食煲", price: 85, category: "煲類" },
+          { name: "酸辣扁食煲 (加飯/麵/冬粉)", price: 95, category: "煲類" },
+          { name: "滷蛋", price: 15, category: "各式小菜" },
+          { name: "泡菜", price: 30, category: "各式小菜" },
+          { name: "小黃瓜", price: 30, category: "各式小菜" },
+          { name: "滷味拼盤", price: 30, category: "各式小菜" },
+          { name: "燙青菜", price: 40, category: "各式小菜" },
+          { name: "豬耳朵", price: 40, category: "各式小菜" },
+          { name: "皮蛋豆腐", price: 40, category: "各式小菜" },
+          { name: "小魚干花生", price: 40, category: "各式小菜" }
+        ]
+      },
+      youtong: {
+        name: "🍜 宥桐麵食",
+        imageUrl: "",
+        tags: ["正常", "麵硬", "麵軟", "不辣", "小辣", "中辣", "大辣", "不要香菜/蔥"],
+        items: [
+          { name: "湯粄條", price: 65, category: "飯麵食類" },
+          { name: "湯陽春麵", price: 65, category: "飯麵食類" },
+          { name: "湯油麵", price: 65, category: "飯麵食類" },
+          { name: "湯意麵", price: 70, category: "飯麵食類" },
+          { name: "湯米粉", price: 65, category: "飯麵食類" },
+          { name: "湯餛飩", price: 60, category: "飯麵食類" },
+          { name: "湯水晶餃", price: 60, category: "飯麵食類" },
+          { name: "湯餛飩麵", price: 75, category: "飯麵食類" },
+          { name: "湯餛飩意麵", price: 80, category: "飯麵食類" },
+          { name: "湯餛飩米粉", price: 75, category: "飯麵食類" },
+          { name: "湯餛飩粄條", price: 75, category: "飯麵食類" },
+          { name: "乾粄條", price: 65, category: "飯麵食類" },
+          { name: "乾陽春麵", price: 65, category: "飯麵食類" },
+          { name: "乾油麵", price: 65, category: "飯麵食類" },
+          { name: "乾意麵", price: 70, category: "飯麵食類" },
+          { name: "乾米粉", price: 65, category: "飯麵食類" },
+          { name: "乾餛飩", price: 60, category: "飯麵食類" },
+          { name: "乾水晶餃", price: 60, category: "飯麵食類" },
+          { name: "乾餛飩麵", price: 75, category: "飯麵食類" },
+          { name: "乾餛飩意麵", price: 80, category: "飯麵食類" },
+          { name: "乾餛飩米粉", price: 75, category: "飯麵食類" },
+          { name: "乾餛飩粄條", price: 75, category: "飯麵食類" },
+          { name: "梅干肉燥飯", price: 40, category: "飯麵食類" },
+          { name: "滷肉飯", price: 40, category: "飯麵食類" },
+          { name: "豬血湯", price: 30, category: "湯類" },
+          { name: "蘿蔔湯", price: 30, category: "湯類" },
+          { name: "貢丸湯", price: 30, category: "湯類" },
+          { name: "蘿蔔貢丸湯", price: 50, category: "湯類" },
+          { name: "骨仔肉湯", price: 50, category: "湯類" },
+          { name: "酸菜豬肚湯", price: 60, category: "湯類" },
+          { name: "燙大陸妹", price: 40, category: "青菜/小菜" },
+          { name: "燙高麗菜", price: 40, category: "青菜/小菜" },
+          { name: "燙空心菜", price: 40, category: "青菜/小菜" },
+          { name: "油豆腐", price: 15, category: "青菜/小菜" },
+          { name: "白飯", price: 15, category: "青菜/小菜" }
+        ]
+      },
+      hongxin: {
+        name: "🧋 紅芯坊",
+        imageUrl: "",
+        tags: ["正常冰糖", "無糖去冰", "無糖微冰", "微糖微冰", "微糖去冰", "半糖少冰", "熱-無糖", "熱-微糖"],
+        items: [
+          { name: "薏仁紅豆 (M)", price: 50, category: "薏仁紅豆" },
+          { name: "薏仁綠豆 (M)", price: 50, category: "薏仁紅豆" },
+          { name: "蒟蒻薏仁湯 (M)", price: 50, category: "薏仁紅豆" },
+          { name: "蒟蒻紅豆湯 (M)", price: 50, category: "薏仁紅豆" },
+          { name: "蒟蒻綠豆湯 (M)", price: 50, category: "薏仁紅豆" },
+          { name: "薏仁紅豆鮮奶 (M)", price: 60, category: "薏仁紅豆" },
+          { name: "蒟蒻紅豆抹茶 (M)", price: 60, category: "薏仁紅豆" },
+          { name: "熱紅豆湯 (M)", price: 55, category: "薏仁紅豆" },
+          { name: "熱紅豆芋圓(湯圓) (M)", price: 60, category: "薏仁紅豆" },
+          { name: "手釀紫蘇梅 (L)", price: 65, category: "新鮮水果" },
+          { name: "鮮檸檬酵素 (L)", price: 65, category: "新鮮水果" },
+          { name: "鮮百香果蜂蜜 (L)", price: 70, category: "新鮮水果" },
+          { name: "鮮金桔檸檬 (L)", price: 65, category: "新鮮水果" },
+          { name: "鮮檸檬梅子 (L)", price: 65, category: "新鮮水果" },
+          { name: "檸檬養樂多 (L)", price: 75, category: "新鮮水果" },
+          { name: "洛神梅子檸檬 (L)", price: 75, category: "新鮮水果" },
+          { name: "火龍果鳳梨汁 (L)", price: 75, category: "新鮮水果" },
+          { name: "鳳梨冰沙 (L)", price: 65, category: "現打冰沙" },
+          { name: "綠豆冰沙 (L)", price: 65, category: "現打冰沙" },
+          { name: "綠豆沙鮮奶 (L)", price: 75, category: "現打冰沙" },
+          { name: "紅豆冰沙 (L)", price: 70, category: "現打冰沙" },
+          { name: "火龍果鳳梨冰沙 (L)", price: 75, category: "現打冰沙" },
+          { name: "黑糖桂圓老薑", price: 55, category: "熱飲" },
+          { name: "桂圓老薑鮮奶", price: 65, category: "熱飲" },
+          { name: "阿里山烏龍青 (L)", price: 35, category: "原茶・鮮果茶" },
+          { name: "綠茶 (L)", price: 35, category: "原茶・鮮果茶" },
+          { name: "紅茶 (L)", price: 35, category: "原茶・鮮果茶" },
+          { name: "話梅綠 (L)", price: 45, category: "原茶・鮮果茶" },
+          { name: "鮮金桔綠 (L)", price: 55, category: "原茶・鮮果茶" },
+          { name: "鮮檸檬紅茶 (L)", price: 60, category: "原茶・鮮果茶" },
+          { name: "鮮葡萄柚綠茶 (L)", price: 65, category: "原茶・鮮果茶" },
+          { name: "四季水果茶 (L)", price: 70, category: "原茶・鮮果茶" },
+          { name: "鮮百香綠 (L)", price: 65, category: "原茶・鮮果茶" },
+          { name: "鮮百香烏龍 (L)", price: 65, category: "原茶・鮮果茶" },
+          { name: "蜂蜜綠 (L)", price: 50, category: "原茶・鮮果茶" },
+          { name: "蜂蜜烏龍 (L)", price: 50, category: "原茶・鮮果茶" },
+          { name: "養樂多綠茶 (L)", price: 55, category: "原茶・鮮果茶" },
+          { name: "奶茶 (L)", price: 55, category: "奶茶" },
+          { name: "蜂蜜奶綠 (L)", price: 55, category: "奶茶" },
+          { name: "焙烏龍奶茶 (L)", price: 55, category: "奶茶" },
+          { name: "阿華田可可 (L)", price: 65, category: "奶茶" },
+          { name: "醇杏仁茶 (L)", price: 65, category: "奶茶" },
+          { name: "薏仁清漿 (M)", price: 50, category: "鮮奶" },
+          { name: "薏仁清漿 (L)", price: 65, category: "鮮奶" },
+          { name: "薏仁漿鮮奶 (M)", price: 60, category: "鮮奶" },
+          { name: "薏仁漿鮮奶 (L)", price: 75, category: "鮮奶" },
+          { name: "可可鮮奶 (M)", price: 60, category: "鮮奶" },
+          { name: "可可鮮奶 (L)", price: 75, category: "鮮奶" },
+          { name: "仙草凍鮮奶 (L)", price: 70, category: "鮮奶" },
+          { name: "抹茶鮮奶 (L)", price: 70, category: "鮮奶" },
+          { name: "焙烏龍鮮奶 (L)", price: 65, category: "鮮奶" },
+          { name: "鮮奶茶 (L)", price: 65, category: "鮮奶" }
+        ]
+      },
+      vietnam: {
+        name: "🍜 越南河粉",
+        imageUrl: "",
+        tags: ["正常", "麵少", "加麵", "不辣", "小辣", "中辣", "大辣", "不要香菜/蔥"],
+        items: [
+          { name: "綜合河粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排河粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮河粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合板條 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排板條 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮板條 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合冬粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排冬粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮冬粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合米苔目 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排米苔目 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮米苔目 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合米粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排米粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮米粉 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合雞蛋麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排雞蛋麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮雞蛋麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合意麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "肉排意麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "海鮮意麵 (湯)", price: 100, category: "湯麵類" },
+          { name: "綜合河粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排河粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮河粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "綜合板條 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排板條 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮板條 (乾)", price: 100, category: "乾麵類" },
+          { name: "綜合冬粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排冬粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮冬粉 (乾)", price: 100, category: "乾麵類" },
+          { name: "綜合米苔目 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排米苔目 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮米苔目 (乾)", price: 100, category: "乾麵類" },
+          { name: "綜合雞蛋麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排雞蛋麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮雞蛋麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "綜合意麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "肉排意麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮意麵 (乾)", price: 100, category: "乾麵類" },
+          { name: "海鮮湯", price: 90, category: "湯類" },
+          { name: "綜合湯", price: 90, category: "湯類" },
+          { name: "肉排湯", price: 90, category: "湯類" },
+          { name: "海鮮+綜合湯", price: 150, category: "湯類" },
+          { name: "海鮮+肉排湯", price: 150, category: "湯類" },
+          { name: "綜合拼盤", price: 70, category: "小菜" },
+          { name: "川燙豆芽菜/大陸妹", price: 40, category: "小菜" },
+          { name: "油蔥酥拌飯 (小)", price: 25, category: "小菜" },
+          { name: "油蔥酥拌飯 (大)", price: 35, category: "小菜" },
+          { name: "生菜春捲 (夏季限定)", price: 100, category: "其它" },
+          { name: "涼拌米線 (夏季限定)", price: 100, category: "其它" },
+          { name: "鮮肉湯圓 (秋冬限定)", price: 110, category: "其它" }
+        ]
+      },
+      zhenzhen: {
+        name: "🐘 蓁蓁泰式食堂",
+        imageUrl: "",
+        tags: ["正常", "不辣", "小辣", "中辣", "大辣", "飯少", "加飯", "不要香菜/蔥"],
+        items: [
+          { name: "炒飯 (豬)", price: 100, category: "主食類" },
+          { name: "炒飯 (牛)", price: 110, category: "主食類" },
+          { name: "炒飯 (海鮮)", price: 110, category: "主食類" },
+          { name: "炒泡麵 (豬)", price: 100, category: "主食類" },
+          { name: "炒泡麵 (牛)", price: 110, category: "主食類" },
+          { name: "炒泡麵 (海鮮)", price: 110, category: "主食類" },
+          { name: "炒板條 (豬)", price: 100, category: "主食類" },
+          { name: "炒板條 (牛)", price: 110, category: "主食類" },
+          { name: "炒板條 (海鮮)", price: 110, category: "主食類" },
+          { name: "打拋飯 (豬)", price: 110, category: "主食類" },
+          { name: "打拋飯 (牛)", price: 120, category: "主食類" },
+          { name: "打拋飯 (海鮮)", price: 120, category: "主食類" },
+          { name: "椰汁咖哩 (豬)", price: 110, category: "主食類" },
+          { name: "椰汁咖哩 (雞)", price: 120, category: "主食類" },
+          { name: "椰汁咖哩 (牛)", price: 130, category: "主食類" },
+          { name: "紅醬咖哩 (豬)", price: 110, category: "主食類" },
+          { name: "紅醬咖哩 (雞)", price: 120, category: "主食類" },
+          { name: "紅醬咖哩 (牛)", price: 130, category: "主食類" },
+          { name: "綠咖哩 (豬)", price: 110, category: "主食類" },
+          { name: "綠咖哩 (雞)", price: 120, category: "主食類" },
+          { name: "綠咖哩 (牛)", price: 130, category: "主食類" },
+          { name: "煎蛋蓋飯 (豬)", price: 100, category: "主食類" },
+          { name: "煎蛋蓋飯 (牛)", price: 110, category: "主食類" },
+          { name: "煎蛋蓋飯 (海鮮)", price: 110, category: "主食類" },
+          { name: "芥蘭蓋飯 (豬)", price: 110, category: "主食類" },
+          { name: "芥蘭蓋飯 (牛)", price: 120, category: "主食類" },
+          { name: "芥蘭蓋飯 (海鮮)", price: 120, category: "主食類" },
+          { name: "涼拌青木瓜", price: 100, category: "涼拌類" },
+          { name: "涼拌海鮮青木瓜", price: 170, category: "涼拌類" },
+          { name: "臭魚涼拌青木瓜", price: 100, category: "涼拌類" },
+          { name: "涼拌火腿", price: 130, category: "涼拌類" },
+          { name: "涼拌豬肉冬粉", price: 130, category: "涼拌類" },
+          { name: "涼拌海鮮", price: 170, category: "涼拌類" },
+          { name: "涼拌綜合", price: 200, category: "涼拌類" },
+          { name: "海鮮酸辣湯麵 (冬粉)", price: 210, category: "湯類" },
+          { name: "海鮮酸辣湯麵 (泡麵)", price: 210, category: "湯類" },
+          { name: "海鮮酸辣湯", price: 190, category: "湯類" },
+          { name: "小火鍋", price: 160, category: "湯類" },
+          { name: "炒空心菜", price: 100, category: "單點類" },
+          { name: "炒高麗菜", price: 100, category: "單點類" },
+          { name: "打拋 (豬)", price: 130, category: "單點類" },
+          { name: "打拋 (牛)", price: 160, category: "單點類" },
+          { name: "打拋 (海鮮)", price: 160, category: "單點類" },
+          { name: "芥蘭 (豬)", price: 150, category: "單點類" },
+          { name: "芥蘭 (牛)", price: 160, category: "單點類" },
+          { name: "芥蘭 (海鮮)", price: 160, category: "單點類" },
+          { name: "綠咖哩 (豬)", price: 160, category: "單點類" },
+          { name: "綠咖哩 (雞)", price: 170, category: "單點類" },
+          { name: "綠咖哩 (牛)", price: 190, category: "單點類" },
+          { name: "椰汁咖哩 (豬)", price: 160, category: "單點類" },
+          { name: "椰汁咖哩 (雞)", price: 170, category: "單點類" },
+          { name: "椰汁咖哩 (牛)", price: 190, category: "單點類" },
+          { name: "紅醬咖哩 (豬)", price: 160, category: "單點類" },
+          { name: "紅醬咖哩 (雞)", price: 170, category: "單點類" },
+          { name: "紅醬咖哩 (牛)", price: 190, category: "單點類" },
+          { name: "煎蛋 (豬)", price: 120, category: "單點類" },
+          { name: "煎蛋 (牛)", price: 140, category: "單點類" },
+          { name: "煎蛋 (海鮮)", price: 140, category: "單點類" },
+          { name: "檸檬魚", price: 350, category: "單點類" },
+          { name: "白飯", price: 15, category: "單點類" },
+          { name: "蛋", price: 15, category: "單點類" }
         ]
       },
       bento: {
-        name: "🍱 2. 阿霞人氣手作便當",
+        name: "🍱 備用：阿霞人氣手作便當",
         imageUrl: "",
         tags: ["正常", "飯少", "加飯(+$10)", "不要酸菜", "加辣菜脯", "去滷汁"],
         items: [
@@ -309,121 +859,29 @@
           { name: "蒜泥白肉便當", price: 110, category: "便當" },
           { name: "養生味噌湯", price: 25, category: "湯品" }
         ]
-      },
-      drink: {
-        name: "🧋 3. 幸福堂手搖飲專賣",
-        imageUrl: "",
-        tags: ["無糖去冰", "無糖微冰", "微糖微冰", "微糖去冰", "半糖少冰", "正常冰糖", "加珍珠(+$10)"],
-        items: [
-          { name: "手標泰式奶茶", price: 60, category: "奶茶" },
-          { name: "黑糖珍珠鮮奶", price: 65, category: "鮮奶" },
-          { name: "四季春青茶", price: 35, category: "原茶" },
-          { name: "錫蘭紅玉拿鐵", price: 60, category: "鮮奶茶" },
-          { name: "滿杯紅柚綠茶", price: 65, category: "果茶" }
-        ]
-      },
-      cafe: {
-        name: "☕ 4. 職人咖啡輕食下午茶",
-        imageUrl: "",
-        tags: ["冰-無糖", "冰-微糖", "冰-少冰", "熱-無糖", "熱-微糖", "換燕麥奶(+$15)"],
-        items: [
-          { name: "美式黑咖啡 (大)", price: 55, category: "咖啡" },
-          { name: "經典醇厚拿鐵 (大)", price: 75, category: "咖啡" },
-          { name: "海鹽焦糖瑪奇朵", price: 85, category: "特調" },
-          { name: "靜岡抹茶拿鐵", price: 80, category: "歐蕾" },
-          { name: "烤腿排風味三明治", price: 65, category: "輕食" },
-          { name: "比利時烈日鬆餅", price: 60, category: "點心" }
-        ]
-      },
-      noodle: {
-        name: "🍜 5. 老眷村牛肉麵與水餃",
-        imageUrl: "",
-        tags: ["正常", "不加蔥", "不加香菜", "不加酸菜", "小辣", "大辣", "加麵(+$20)"],
-        items: [
-          { name: "紅燒半筋半肉牛肉麵", price: 160, category: "湯麵" },
-          { name: "招牌川味牛肉麵", price: 145, category: "湯麵" },
-          { name: "古早味麻醬乾麵", price: 65, category: "乾麵" },
-          { name: "高麗菜鮮肉水餃 (10顆)", price: 70, category: "水餃" },
-          { name: "韭菜鮮肉水餃 (10顆)", price: 70, category: "水餃" },
-          { name: "酸辣湯", price: 40, category: "湯品" }
-        ]
-      },
-      japanese: {
-        name: "🍛 6. 銀座日式丼飯定食",
-        imageUrl: "",
-        tags: ["正常", "飯少", "醬汁少", "不加洋蔥", "不加蔥花", "蛋全熟"],
-        items: [
-          { name: "厚切里肌豬排滑蛋丼", price: 145, category: "丼飯" },
-          { name: "和風照燒雞腿丼", price: 135, category: "丼飯" },
-          { name: "熟成濃郁咖哩豬排飯", price: 150, category: "咖哩" },
-          { name: "灸燒雪花牛丼", price: 140, category: "丼飯" },
-          { name: "日式唐揚炸雞 (單點)", price: 85, category: "單點" }
-        ]
-      },
-      korean: {
-        name: "🥘 7. 首爾韓式石鍋拌飯",
-        imageUrl: "",
-        tags: ["正常", "不辣", "小辣", "中辣", "飯少", "蛋全熟", "不加泡菜"],
-        items: [
-          { name: "韓式豬肉石鍋拌飯", price: 140, category: "拌飯" },
-          { name: "韓式泡菜豆腐海鮮鍋 (附飯)", price: 155, category: "鍋物" },
-          { name: "起司部隊鍋 (附拉麵)", price: 165, category: "鍋物" },
-          { name: "韓式甜辣洋釀炸雞", price: 130, category: "炸雞" },
-          { name: "海鮮煎餅", price: 150, category: "單點" }
-        ]
-      },
-      healthy: {
-        name: "🥗 8. 綠意舒肥健康水煮餐",
-        imageUrl: "",
-        tags: ["和風柚子醬", "胡麻醬", "凱薩醬", "不加醬", "飯換地瓜", "飯少", "菜多"],
-        items: [
-          { name: "舒肥嫩煎雞胸蛋白餐盒", price: 125, category: "健康餐盒" },
-          { name: "香煎板腱牛排健康餐盒", price: 155, category: "健康餐盒" },
-          { name: "挪威薄鹽鮭魚餐盒", price: 160, category: "健康餐盒" },
-          { name: "蒜香毛豆杏鮑菇蔬食餐", price: 115, category: "蔬食" },
-          { name: "無糖高纖豆漿", price: 35, category: "飲品" }
-        ]
-      },
-      western: {
-        name: "🍕 9. 義式手工披薩與炸雞",
-        imageUrl: "",
-        tags: ["正常", "加辣粉", "加起司粉", "不加洋蔥", "去冰"],
-        items: [
-          { name: "瑪格麗特個人獨享披薩", price: 135, category: "披薩" },
-          { name: "夏威夷鳳梨鮮蝦披薩", price: 150, category: "披薩" },
-          { name: "奶油培根義大利麵", price: 140, category: "義大利麵" },
-          { name: "美式咔啦脆皮炸雞 (2塊)", price: 115, category: "炸物" },
-          { name: "黃金脆薯", price: 55, category: "炸物" }
-        ]
-      },
-      snack: {
-        name: "🍗 10. 台灣味脆皮雞排與滷味",
-        imageUrl: "",
-        tags: ["正常胡椒", "不辣", "小辣", "中辣", "大辣", "加梅粉", "不加蒜頭", "不加酸菜"],
-        items: [
-          { name: "招牌爆汁脆皮大雞排", price: 85, category: "炸物" },
-          { name: "無骨鹽酥雞 (大份)", price: 75, category: "炸物" },
-          { name: "甜不辣 + 百頁豆腐雙拼", price: 65, category: "炸物" },
-          { name: "招牌麻辣鴨血豆腐套餐 (含王子麵)", price: 115, category: "滷味" },
-          { name: "綜合蔬菜滷味拼盤", price: 80, category: "滷味" }
-        ]
       }
     };
 
+    // 預設 10 個頁籤分別綁定您的 9 家愛店與 1 個備用頁籤
     function getDefaultConfig() {
       return {
-        slot1: { visible: true,  label: "週四午餐", templateKey: "thai",  imageUrl: "", closed: false, customMenu: null },
-        slot2: { visible: true,  label: "週四飲料", templateKey: "drink", imageUrl: "", closed: false, customMenu: null },
-        slot3: { visible: true,  label: "週五午餐", templateKey: "bento", imageUrl: "", closed: false, customMenu: null },
-        slot4: { visible: true,  label: "週五飲料", templateKey: "cafe",  imageUrl: "", closed: false, customMenu: null },
-        slot5: { visible: false, label: "備用場次5", templateKey: "noodle", imageUrl: "", closed: false, customMenu: null },
-        slot6: { visible: false, label: "備用場次6", templateKey: "snack", imageUrl: "", closed: false, customMenu: null }
+        slot1:  { visible: true,  label: "蓁蓁泰式",   templateKey: "zhenzhen", imageUrl: "", closed: false, customMenu: null },
+        slot2:  { visible: true,  label: "紅芯坊飲品", templateKey: "hongxin",  imageUrl: "", closed: false, customMenu: null },
+        slot3:  { visible: false, label: "八方雲集",   templateKey: "bafang",   imageUrl: "", closed: false, customMenu: null },
+        slot4:  { visible: false, label: "好好麵飯館", templateKey: "haohao",   imageUrl: "", closed: false, customMenu: null },
+        slot5:  { visible: false, label: "好卷不見",   templateKey: "haojuan",  imageUrl: "", closed: false, customMenu: null },
+        slot6:  { visible: false, label: "宜品乾拌麵", templateKey: "yipin",    imageUrl: "", closed: false, customMenu: null },
+        slot7:  { visible: false, label: "花蓮扁食",   templateKey: "hualien",  imageUrl: "", closed: false, customMenu: null },
+        slot8:  { visible: false, label: "宥桐麵食",   templateKey: "youtong",  imageUrl: "", closed: false, customMenu: null },
+        slot9:  { visible: false, label: "越南河粉",   templateKey: "vietnam",  imageUrl: "", closed: false, customMenu: null },
+        slot10: { visible: false, label: "備用頁籤10", templateKey: "bento",    imageUrl: "", closed: false, customMenu: null }
       };
     }
 
     let state = {
       currentDay: "slot1",
       currentView: "order",
+      currentCategory: "全部",
       editingSlot: "slot1",
       config: getDefaultConfig(),
       orders: [],
@@ -445,13 +903,17 @@
       ).join("") + `<option value="custom">✨ 使用自訂 / 檔案匯入的 JSON 菜單</option>`;
     }
 
-    function ensureSixSlotsConfig(conf) {
+    function ensureTenSlotsConfig(conf) {
       const def = getDefaultConfig();
       SLOT_KEYS.forEach(k => {
         if (!conf[k]) {
           conf[k] = def[k];
-        } else if (typeof conf[k].imageUrl === "undefined") {
-          conf[k].imageUrl = "";
+        } else {
+          if (typeof conf[k].imageUrl === "undefined") conf[k].imageUrl = "";
+          // 若舊版雲端設定的 templateKey 是舊代號 (如 thai, drink)，自動對應到您的新店家
+          if (conf[k].templateKey === "thai") conf[k].templateKey = "zhenzhen";
+          if (conf[k].templateKey === "drink") conf[k].templateKey = "hongxin";
+          if (conf[k].templateKey === "cafe") conf[k].templateKey = "bafang";
         }
       });
       return conf;
@@ -470,7 +932,7 @@
         const res = await fetch(GAS_URL);
         const data = await res.json();
         if (data.status === "ok") {
-          state.config = ensureSixSlotsConfig(data.config);
+          state.config = ensureTenSlotsConfig(data.config);
           state.orders = data.orders;
           statusEl.textContent = "✅ 已與 Google 試算表即時同步";
           ensureValidCurrentSlot();
@@ -496,10 +958,9 @@
       if (slotConf && slotConf.templateKey === "custom" && slotConf.customMenu) {
         return slotConf.customMenu;
       }
-      return RESTAURANT_TEMPLATES[slotConf?.templateKey] || RESTAURANT_TEMPLATES.thai;
+      return RESTAURANT_TEMPLATES[slotConf?.templateKey] || RESTAURANT_TEMPLATES.zhenzhen;
     }
 
-    // 取得該場次設定的菜單照片網址（優先使用團主在場次設定的 imageUrl，其次使用 JSON 內建的 imageUrl）
     function getActiveImageUrl(slotKey) {
       const slotConf = state.config[slotKey];
       const menu = getActiveMenu(slotKey);
@@ -509,7 +970,13 @@
 
     function switchDay(slotKey) {
       state.currentDay = slotKey;
+      state.currentCategory = "全部";
       state.cart = {};
+      renderAll();
+    }
+
+    function switchCategory(cat) {
+      state.currentCategory = cat;
       renderAll();
     }
 
@@ -523,7 +990,7 @@
       const dayConf = state.config[state.currentDay];
       const menu = getActiveMenu(state.currentDay);
 
-      // 動態渲染頂部開啟的場次按鈕
+      // 動態渲染頂部開啟的頁籤按鈕 (1 ~ 10 個)
       const visibleSlots = SLOT_KEYS.filter(k => state.config[k] && state.config[k].visible);
       const tabsContainer = document.getElementById("slotTabsContainer");
       tabsContainer.innerHTML = visibleSlots.map(k => {
@@ -555,7 +1022,7 @@
       if (imgUrl) {
         imgLink.href = imgUrl;
         if (imgEl.getAttribute("src") !== imgUrl) {
-          imgWrapper.classList.add("hidden"); // 等待 onload 成功後自動顯示
+          imgWrapper.classList.add("hidden");
           imgEl.src = imgUrl;
         } else if (imgEl.complete && imgEl.naturalWidth > 0) {
           imgWrapper.classList.remove("hidden");
@@ -584,12 +1051,29 @@
       document.getElementById("bottomBar").classList.toggle("hidden", state.currentView !== "order" || dayConf.closed);
 
       checkExistingUserHint();
+      renderCategoryBar(menu);
       renderMenuCards(menu);
       renderCartBar(menu);
       renderSummary(dayOrders);
     }
 
-    // 即時檢查輸入的點餐人是否已經在本場次點過餐
+    // 渲染商品分類快速篩選列（方便瀏覽 50+ 品項的大菜單）
+    function renderCategoryBar(menu) {
+      const bar = document.getElementById("categoryFilterBar");
+      const cats = ["全部"];
+      (menu.items || []).forEach(item => {
+        const c = item.category || "品項";
+        if (!cats.includes(c)) cats.push(c);
+      });
+      if (!cats.includes(state.currentCategory)) state.currentCategory = "全部";
+
+      bar.innerHTML = cats.map(c => {
+        const active = state.currentCategory === c;
+        const safeC = escapeHTML(c);
+        return `<button type="button" onclick="switchCategory('${safeC}')" class="px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition ${active ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200'}">${safeC}</button>`;
+      }).join("");
+    }
+
     function checkExistingUserHint() {
       const userName = (document.getElementById("inputUserName")?.value || "").trim();
       const banner = document.getElementById("existingUserBanner");
@@ -611,8 +1095,16 @@
     function renderMenuCards(menu) {
       const container = document.getElementById("menuListContainer");
       const defaultTag = (menu.tags && menu.tags[0]) ? menu.tags[0] : "正常";
-      container.innerHTML = menu.items.map((item, idx) => {
+
+      const htmlList = [];
+      (menu.items || []).forEach((item, idx) => {
+        const itemCat = item.category || "品項";
         const cartItem = state.cart[idx] || { qty: 0, special: defaultTag };
+        // 若選了特定分類，只顯示該分類或「已經有選購份數」的品項
+        if (state.currentCategory !== "全部" && itemCat !== state.currentCategory && cartItem.qty === 0) {
+          return;
+        }
+
         const activeClass = cartItem.qty > 0 ? "border-amber-500 ring-2 ring-amber-200 bg-amber-50/30" : "border-slate-200 bg-white";
 
         const tagButtons = (menu.tags || ["正常"]).map(tag => {
@@ -621,13 +1113,13 @@
           return `<button type="button" onclick="selectSpecial(${idx}, '${safeTag}')" class="px-2.5 py-1 rounded-full text-xs font-bold border ${isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-100 text-slate-600 border-slate-200'}">${safeTag}</button>`;
         }).join("");
 
-        return `
+        htmlList.push(`
           <div class="rounded-2xl p-4 shadow-sm border transition ${activeClass}">
             <div class="flex items-center justify-between">
               <div>
-                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${escapeHTML(item.category || '品項')}</span>
+                <span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">${escapeHTML(itemCat)}</span>
                 <h4 class="text-base font-extrabold text-slate-800 mt-1">${escapeHTML(item.name)}</h4>
-                <p class="text-sm font-bold text-amber-600">$${Number(item.price) || 0}</p>
+                <p class="text-sm font-bold text-amber-600">$${formatMoney(item.price)}</p>
               </div>
               <div class="flex items-center gap-3">
                 <button type="button" onclick="changeQty(${idx}, -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-lg flex items-center justify-center">－</button>
@@ -644,8 +1136,10 @@
               </div>
             ` : ''}
           </div>
-        `;
-      }).join("");
+        `);
+      });
+
+      container.innerHTML = htmlList.join("");
     }
 
     function changeQty(idx, delta) {
@@ -680,16 +1174,13 @@
         const c = state.cart[idx];
         if (item && c.qty > 0) {
           totalQty += c.qty;
-          totalPrice += item.price * c.qty;
+          totalPrice += Number(item.price) * c.qty;
         }
       });
       document.getElementById("cartTotalQty").textContent = totalQty;
-      document.getElementById("cartTotalPrice").textContent = totalPrice;
+      document.getElementById("cartTotalPrice").textContent = formatMoney(totalPrice);
     }
 
-    // ==========================================
-    // 點餐送出與「重複點餐偵測（覆蓋 vs 加點）」
-    // ==========================================
     function handlePreSubmit() {
       const userName = document.getElementById("inputUserName").value.trim();
       const menu = getActiveMenu(state.currentDay);
@@ -774,9 +1265,6 @@
       }
     }
 
-    // ==========================================
-    // 取消個人點餐功能
-    // ==========================================
     async function cancelMyOrderFromForm() {
       const userName = document.getElementById("inputUserName").value.trim();
       if (!userName) return;
@@ -815,7 +1303,6 @@
       const dayConf = state.config[state.currentDay];
       const canCancel = !dayConf.closed || !!verifiedAdminPin;
 
-      // 1. 給店家叫餐統計
       const dishMap = {};
       dayOrders.forEach(o => {
         const key = `${o.mealName}（${o.special || '正常'}）`;
@@ -832,7 +1319,6 @@
             </div>
           `).join("");
 
-      // 2. 個人應付金額（附帶取消點餐按鈕）
       const personMap = {};
       let grandTotal = 0;
       dayOrders.forEach(o => {
@@ -858,7 +1344,7 @@
                   <span class="text-xs text-slate-400 block truncate">${escapeHTML(personMap[p].items.join("、"))}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="font-extrabold text-emerald-700">$${personMap[p].total}</span>
+                  <span class="font-extrabold text-emerald-700">$${formatMoney(personMap[p].total)}</span>
                   ${cancelBtnHtml}
                 </div>
               </div>
@@ -866,16 +1352,15 @@
           }).join("") + `
             <div class="flex justify-between items-center pt-2 font-extrabold text-base text-slate-900">
               <span>本場次總金額</span>
-              <span class="text-amber-600">$${grandTotal}</span>
+              <span class="text-amber-600">$${formatMoney(grandTotal)}</span>
             </div>
           `;
 
-      // 3. 5大欄位明細表
       const tbody = document.getElementById("detailTableBody");
       tbody.innerHTML = dayOrders.map(o => `
         <tr>
           <td class="py-2 pr-2 font-bold text-slate-800">${escapeHTML(o.userName)}</td>
-          <td class="py-2 pr-2">${escapeHTML(o.mealName)} <span class="text-slate-400">($${Number(o.price) || 0})</span></td>
+          <td class="py-2 pr-2">${escapeHTML(o.mealName)} <span class="text-slate-400">($${formatMoney(o.price)})</span></td>
           <td class="py-2 pr-2 font-bold">${Number(o.qty) || 0}</td>
           <td class="py-2 pr-2 text-amber-700">${escapeHTML(o.special || '正常')}</td>
           <td class="py-2 text-slate-500">${escapeHTML(o.note || '-')}</td>
@@ -903,9 +1388,9 @@
 
       lines.push("💰 【個人收款明細】");
       Object.keys(personMap).forEach(p => {
-        lines.push(`• ${p}：$${personMap[p].total}｜${personMap[p].list.join(" + ")}`);
+        lines.push(`• ${p}：$${formatMoney(personMap[p].total)}｜${personMap[p].list.join(" + ")}`);
       });
-      lines.push(`\n本場總計：$${grandTotal}`);
+      lines.push(`\n本場總計：$${formatMoney(grandTotal)}`);
 
       navigator.clipboard.writeText(lines.join("\n"));
       alert("✅ 已複製 LINE 對帳文字！");
@@ -917,7 +1402,7 @@
       let csv = "\uFEFF場次,1.點餐人,2.選擇餐點,單價,3.餐點份數,4.餐點特殊需求,5.其他備註\n";
       const label = state.config[state.currentDay].label;
       dayOrders.forEach(o => {
-        csv += `"${label}","${o.userName}","${o.mealName}",${o.price},${o.qty},"${o.special || ''}","${o.note || ''}"\n`;
+        csv += `"${label}","${o.userName}","${o.mealName}",${formatMoney(o.price)},${o.qty},"${o.special || ''}","${o.note || ''}"\n`;
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
@@ -927,7 +1412,7 @@
     }
 
     // ==========================================
-    // 團主密碼預先驗證 + JSON 檔案匯入 + 6 場次管理
+    // 團主密碼驗證 + 10 個獨立頁籤管理
     // ==========================================
     function requestAdminAccess() {
       if (verifiedAdminPin) {
@@ -985,7 +1470,6 @@
       document.getElementById("adminModal").classList.add("hidden");
     }
 
-    // 處理匯入 .json 菜單檔案
     function handleJsonFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1018,7 +1502,6 @@
       reader.readAsText(file, "UTF-8");
     }
 
-    // 下載目前編輯場次的菜單為 .json 檔案
     function downloadCurrentMenuJson() {
       const rawText = document.getElementById("adminCustomJson").value.trim();
       let menuObj = getActiveMenu(state.editingSlot);
@@ -1068,7 +1551,7 @@
       sel.innerHTML = SLOT_KEYS.map((k, idx) => {
         const c = state.config[k];
         const visTag = c.visible ? "👁️顯示中" : "🙈已隱藏";
-        return `<option value="${k}" ${state.editingSlot === k ? 'selected' : ''}>場次 ${idx + 1}：${escapeHTML(c.label)} (${visTag})</option>`;
+        return `<option value="${k}" ${state.editingSlot === k ? 'selected' : ''}>頁籤 ${idx + 1}：${escapeHTML(c.label)} (${visTag})</option>`;
       }).join("");
     }
 
@@ -1103,10 +1586,10 @@
       document.getElementById("adminSlotVisible").checked = !!slotConf.visible;
       document.getElementById("adminDayLabel").value = slotConf.label;
       document.getElementById("adminImageUrl").value = slotConf.imageUrl || "";
-      document.getElementById("adminTemplateSelect").value = slotConf.templateKey;
+      document.getElementById("adminTemplateSelect").value = RESTAURANT_TEMPLATES[slotConf.templateKey] ? slotConf.templateKey : (slotConf.templateKey === "custom" ? "custom" : "zhenzhen");
       document.getElementById("adminCustomJson").value = (slotConf.templateKey === "custom" && slotConf.customMenu)
         ? JSON.stringify(slotConf.customMenu, null, 2)
-        : JSON.stringify(RESTAURANT_TEMPLATES[slotConf.templateKey] || RESTAURANT_TEMPLATES.thai, null, 2);
+        : JSON.stringify(RESTAURANT_TEMPLATES[slotConf.templateKey] || RESTAURANT_TEMPLATES.zhenzhen, null, 2);
       document.getElementById("fileImportHint").textContent = "選取檔案後會自動填入下方文字框並切換為自訂菜單";
       document.getElementById("fileImportHint").className = "text-[11px] text-slate-400";
       updateAdminCloseBtnUI(slotConf.closed);
@@ -1119,7 +1602,7 @@
     }
 
     function onAdminLabelInput() {
-      state.config[state.editingSlot].label = document.getElementById("adminDayLabel").value.trim() || "未命名場次";
+      state.config[state.editingSlot].label = document.getElementById("adminDayLabel").value.trim() || "未命名頁籤";
       renderAdminVisibilityGrid();
       renderAdminSlotSelector();
     }
