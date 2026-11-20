@@ -28,13 +28,30 @@
   </header>
 
   <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
-    <!-- 餐廳資訊與狀態橫幅 -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
-      <div>
-        <span class="text-xs text-slate-400 font-medium">目前選擇場次與店家</span>
-        <h2 id="restaurantTitle" class="text-base font-extrabold text-slate-800 mt-0.5"></h2>
+    <!-- 餐廳資訊、狀態橫幅與菜單照片展示區 -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-medium">目前選擇場次與店家</span>
+          <h2 id="restaurantTitle" class="text-base font-extrabold text-slate-800 mt-0.5"></h2>
+        </div>
+        <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold shrink-0"></span>
       </div>
-      <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-bold shrink-0"></span>
+
+      <!-- 菜單照片區塊：有設定照片且載入成功才顯示，無照片自動隱藏 -->
+      <div id="menuImageWrapper" class="hidden pt-2 border-t border-slate-100">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-bold text-slate-600">🖼️ 店家實體菜單（點擊圖片可放大檢視）</span>
+          <a id="menuImageLink" href="#" target="_blank" rel="noopener" class="text-xs font-bold text-amber-600 hover:underline">🔍 開啟原圖</a>
+        </div>
+        <div class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+          <img id="menuImageEl" src="" alt="店家菜單照片"
+               onclick="window.open(this.src, '_blank')"
+               onload="document.getElementById('menuImageWrapper').classList.remove('hidden')"
+               onerror="document.getElementById('menuImageWrapper').classList.add('hidden')"
+               class="w-full max-h-96 object-contain cursor-zoom-in mx-auto" />
+        </div>
+      </div>
     </div>
 
     <!-- 功能分頁切換：我要點餐 vs 結單總表(5大欄位) -->
@@ -53,8 +70,8 @@
         <!-- 1. 點餐人 & 5. 其他備註 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">點餐人姓名 / 暱稱 *</label>
-            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：英文科OO " class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <label class="block text-xs font-bold text-slate-600 mb-1">1. 點餐人姓名 / 暱稱 *</label>
+            <input id="inputUserName" type="text" maxlength="25" oninput="checkExistingUserHint()" placeholder="例如：行銷部 小明" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <!-- 若該姓名已點過餐，即時顯示提醒與取消按鈕 -->
             <div id="existingUserBanner" class="hidden mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
               <span id="existingUserText" class="text-amber-800 font-bold"></span>
@@ -62,7 +79,7 @@
             </div>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">其他備註（選填）</label>
+            <label class="block text-xs font-bold text-slate-600 mb-1">5. 其他備註（選填）</label>
             <input id="inputNote" type="text" maxlength="60" placeholder="例如：需要免洗餐具、飲料袋" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
@@ -157,7 +174,7 @@
         <p class="font-bold text-amber-900">點餐人：<span id="dupUserName"></span></p>
         <p class="text-amber-800">您先前已點：<span id="dupOldItems" class="font-bold"></span></p>
       </div>
-      <p class="text-xs text-slate-600 leading-relaxed">請問您這次送出是要**覆蓋上一次的點餐**，還是要**保留舊單並多訂這一份（訂兩次）**呢？</p>
+      <p class="text-xs text-slate-600 leading-relaxed">請問您這次送出是要「覆蓋上一次的點餐」，還是要「保留舊單並多訂這一份（訂兩次）」呢？</p>
       <div class="space-y-2 pt-1">
         <button onclick="executeSubmitOrder('replace')" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl text-xs font-bold shadow">
           🔄 覆蓋上一次點餐（刪除舊單，改用新單）
@@ -203,12 +220,19 @@
           <input id="adminDayLabel" type="text" oninput="onAdminLabelInput()" class="w-full border rounded-lg px-2.5 py-1.5 text-sm bg-white" />
         </div>
 
+        <!-- 新增：店家菜單照片連結 / 檔名設定 -->
+        <div class="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1">
+          <label class="block text-xs font-bold text-slate-700">🖼️ 店家菜單照片連結 / 檔名（留空則自動隱藏）</label>
+          <input id="adminImageUrl" type="text" oninput="onAdminImageInput()" placeholder="同資料夾直接填檔名如 thai.jpg 或完整圖片網址" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          <p class="text-[11px] text-slate-400">照片若放在 GitHub 同一個 `/order/` 資料夾，直接輸入檔名（如 `menu1.jpg`）即可。</p>
+        </div>
+
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">方式 1：一鍵套用內建餐廳 JSON 模版</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">方式 1：一鍵套用內建 10 組餐廳 JSON 模版</label>
           <select id="adminTemplateSelect" onchange="onTemplateSelectChange()" class="w-full border rounded-lg px-2.5 py-2 text-sm bg-white font-medium"></select>
         </div>
 
-        <!-- 新增方式 3：直接匯入 .json 菜單檔案 -->
+        <!-- 方式 2：直接匯入 .json 菜單檔案 -->
         <div class="bg-white p-2.5 rounded-lg border border-amber-200 space-y-1.5">
           <div class="flex items-center justify-between">
             <label class="block text-xs font-bold text-slate-700">方式 2：匯入菜單 JSON 檔案 (.json)</label>
@@ -220,7 +244,7 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">方式 3：直接貼上或修改菜單 JSON 文字</label>
-          <textarea id="adminCustomJson" rows="4" oninput="onCustomJsonManualInput()" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂店家","tags":["正常","去冰"],"items":[{"name":"招牌餐","price":100}]}'></textarea>
+          <textarea id="adminCustomJson" rows="4" oninput="onCustomJsonManualInput()" class="w-full border rounded-lg p-2 text-xs font-mono bg-white" placeholder='{"name":"自訂店家","imageUrl":"menu.jpg","tags":["正常","去冰"],"items":[{"name":"招牌餐","price":100}]}'></textarea>
         </div>
 
         <div class="flex items-center justify-between pt-1">
@@ -244,7 +268,7 @@
 
     const SLOT_KEYS = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6"];
 
-    // 暫存已通過驗證的團主密碼（僅存於本次網頁記憶體，重新整理即清除）
+    // 暫存已通過驗證的團主密碼
     let verifiedAdminPin = "";
 
     function escapeHTML(str) {
@@ -256,10 +280,13 @@
         .replace(/'/g, "&#39;");
     }
 
-    // 內建正餐與飲料 JSON 模版庫
+    // ====================================================
+    // 內建 10 組常用餐廳與飲料 JSON 模版庫
+    // ====================================================
     const RESTAURANT_TEMPLATES = {
       thai: {
-        name: "🐘 泰美味泰式料理",
+        name: "🐘 1. 泰美味泰式料理",
+        imageUrl: "",
         tags: ["正常", "不辣", "微辣", "小辣", "中辣", "大辣", "飯少", "不加香菜"],
         items: [
           { name: "泰式打拋豬肉飯", price: 130, category: "主餐" },
@@ -271,7 +298,8 @@
         ]
       },
       bento: {
-        name: "🍱 阿霞人氣手作便當",
+        name: "🍱 2. 阿霞人氣手作便當",
+        imageUrl: "",
         tags: ["正常", "飯少", "加飯(+$10)", "不要酸菜", "加辣菜脯", "去滷汁"],
         items: [
           { name: "招牌厚切排骨飯", price: 115, category: "便當" },
@@ -283,7 +311,8 @@
         ]
       },
       drink: {
-        name: "🧋 幸福堂手搖飲專賣",
+        name: "🧋 3. 幸福堂手搖飲專賣",
+        imageUrl: "",
         tags: ["無糖去冰", "無糖微冰", "微糖微冰", "微糖去冰", "半糖少冰", "正常冰糖", "加珍珠(+$10)"],
         items: [
           { name: "手標泰式奶茶", price: 60, category: "奶茶" },
@@ -294,26 +323,101 @@
         ]
       },
       cafe: {
-        name: "☕ 職人咖啡下午茶",
+        name: "☕ 4. 職人咖啡輕食下午茶",
+        imageUrl: "",
         tags: ["冰-無糖", "冰-微糖", "冰-少冰", "熱-無糖", "熱-微糖", "換燕麥奶(+$15)"],
         items: [
           { name: "美式黑咖啡 (大)", price: 55, category: "咖啡" },
           { name: "經典醇厚拿鐵 (大)", price: 75, category: "咖啡" },
           { name: "海鹽焦糖瑪奇朵", price: 85, category: "特調" },
           { name: "靜岡抹茶拿鐵", price: 80, category: "歐蕾" },
+          { name: "烤腿排風味三明治", price: 65, category: "輕食" },
           { name: "比利時烈日鬆餅", price: 60, category: "點心" }
+        ]
+      },
+      noodle: {
+        name: "🍜 5. 老眷村牛肉麵與水餃",
+        imageUrl: "",
+        tags: ["正常", "不加蔥", "不加香菜", "不加酸菜", "小辣", "大辣", "加麵(+$20)"],
+        items: [
+          { name: "紅燒半筋半肉牛肉麵", price: 160, category: "湯麵" },
+          { name: "招牌川味牛肉麵", price: 145, category: "湯麵" },
+          { name: "古早味麻醬乾麵", price: 65, category: "乾麵" },
+          { name: "高麗菜鮮肉水餃 (10顆)", price: 70, category: "水餃" },
+          { name: "韭菜鮮肉水餃 (10顆)", price: 70, category: "水餃" },
+          { name: "酸辣湯", price: 40, category: "湯品" }
+        ]
+      },
+      japanese: {
+        name: "🍛 6. 銀座日式丼飯定食",
+        imageUrl: "",
+        tags: ["正常", "飯少", "醬汁少", "不加洋蔥", "不加蔥花", "蛋全熟"],
+        items: [
+          { name: "厚切里肌豬排滑蛋丼", price: 145, category: "丼飯" },
+          { name: "和風照燒雞腿丼", price: 135, category: "丼飯" },
+          { name: "熟成濃郁咖哩豬排飯", price: 150, category: "咖哩" },
+          { name: "灸燒雪花牛丼", price: 140, category: "丼飯" },
+          { name: "日式唐揚炸雞 (單點)", price: 85, category: "單點" }
+        ]
+      },
+      korean: {
+        name: "🥘 7. 首爾韓式石鍋拌飯",
+        imageUrl: "",
+        tags: ["正常", "不辣", "小辣", "中辣", "飯少", "蛋全熟", "不加泡菜"],
+        items: [
+          { name: "韓式豬肉石鍋拌飯", price: 140, category: "拌飯" },
+          { name: "韓式泡菜豆腐海鮮鍋 (附飯)", price: 155, category: "鍋物" },
+          { name: "起司部隊鍋 (附拉麵)", price: 165, category: "鍋物" },
+          { name: "韓式甜辣洋釀炸雞", price: 130, category: "炸雞" },
+          { name: "海鮮煎餅", price: 150, category: "單點" }
+        ]
+      },
+      healthy: {
+        name: "🥗 8. 綠意舒肥健康水煮餐",
+        imageUrl: "",
+        tags: ["和風柚子醬", "胡麻醬", "凱薩醬", "不加醬", "飯換地瓜", "飯少", "菜多"],
+        items: [
+          { name: "舒肥嫩煎雞胸蛋白餐盒", price: 125, category: "健康餐盒" },
+          { name: "香煎板腱牛排健康餐盒", price: 155, category: "健康餐盒" },
+          { name: "挪威薄鹽鮭魚餐盒", price: 160, category: "健康餐盒" },
+          { name: "蒜香毛豆杏鮑菇蔬食餐", price: 115, category: "蔬食" },
+          { name: "無糖高纖豆漿", price: 35, category: "飲品" }
+        ]
+      },
+      western: {
+        name: "🍕 9. 義式手工披薩與炸雞",
+        imageUrl: "",
+        tags: ["正常", "加辣粉", "加起司粉", "不加洋蔥", "去冰"],
+        items: [
+          { name: "瑪格麗特個人獨享披薩", price: 135, category: "披薩" },
+          { name: "夏威夷鳳梨鮮蝦披薩", price: 150, category: "披薩" },
+          { name: "奶油培根義大利麵", price: 140, category: "義大利麵" },
+          { name: "美式咔啦脆皮炸雞 (2塊)", price: 115, category: "炸物" },
+          { name: "黃金脆薯", price: 55, category: "炸物" }
+        ]
+      },
+      snack: {
+        name: "🍗 10. 台灣味脆皮雞排與滷味",
+        imageUrl: "",
+        tags: ["正常胡椒", "不辣", "小辣", "中辣", "大辣", "加梅粉", "不加蒜頭", "不加酸菜"],
+        items: [
+          { name: "招牌爆汁脆皮大雞排", price: 85, category: "炸物" },
+          { name: "無骨鹽酥雞 (大份)", price: 75, category: "炸物" },
+          { name: "甜不辣 + 百頁豆腐雙拼", price: 65, category: "炸物" },
+          { name: "招牌麻辣鴨血豆腐套餐 (含王子麵)", price: 115, category: "滷味" },
+          { name: "綜合蔬菜滷味拼盤", price: 80, category: "滷味" }
         ]
       }
     };
 
     function getDefaultConfig() {
       return {
-        slot1: { visible: true,  label: "週四午餐", templateKey: "thai",  closed: false, customMenu: null },
-        slot2: { visible: true,  label: "週四飲料", templateKey: "drink", closed: false, customMenu: null },
-        slot3: { visible: true,  label: "週五午餐", templateKey: "bento", closed: false, customMenu: null },
-        slot4: { visible: true,  label: "週五飲料", templateKey: "cafe",  closed: false, customMenu: null },
-        slot5: { visible: false, label: "備用場次5", templateKey: "thai",  closed: false, customMenu: null },
-        slot6: { visible: false, label: "備用場次6", templateKey: "drink", closed: false, customMenu: null }
+        slot1: { visible: true,  label: "週四午餐", templateKey: "thai",  imageUrl: "", closed: false, customMenu: null },
+        slot2: { visible: true,  label: "週四飲料", templateKey: "drink", imageUrl: "", closed: false, customMenu: null },
+        slot3: { visible: true,  label: "週五午餐", templateKey: "bento", imageUrl: "", closed: false, customMenu: null },
+        slot4: { visible: true,  label: "週五飲料", templateKey: "cafe",  imageUrl: "", closed: false, customMenu: null },
+        slot5: { visible: false, label: "備用場次5", templateKey: "noodle", imageUrl: "", closed: false, customMenu: null },
+        slot6: { visible: false, label: "備用場次6", templateKey: "snack", imageUrl: "", closed: false, customMenu: null }
       };
     }
 
@@ -344,7 +448,11 @@
     function ensureSixSlotsConfig(conf) {
       const def = getDefaultConfig();
       SLOT_KEYS.forEach(k => {
-        if (!conf[k]) conf[k] = def[k];
+        if (!conf[k]) {
+          conf[k] = def[k];
+        } else if (typeof conf[k].imageUrl === "undefined") {
+          conf[k].imageUrl = "";
+        }
       });
       return conf;
     }
@@ -391,6 +499,14 @@
       return RESTAURANT_TEMPLATES[slotConf?.templateKey] || RESTAURANT_TEMPLATES.thai;
     }
 
+    // 取得該場次設定的菜單照片網址（優先使用團主在場次設定的 imageUrl，其次使用 JSON 內建的 imageUrl）
+    function getActiveImageUrl(slotKey) {
+      const slotConf = state.config[slotKey];
+      const menu = getActiveMenu(slotKey);
+      const url = (slotConf && slotConf.imageUrl ? slotConf.imageUrl : (menu && menu.imageUrl ? menu.imageUrl : "")).trim();
+      return url;
+    }
+
     function switchDay(slotKey) {
       state.currentDay = slotKey;
       state.cart = {};
@@ -429,6 +545,24 @@
       } else {
         badge.textContent = "🟢 開放中";
         badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 shrink-0";
+      }
+
+      // 處理菜單照片顯示或隱藏
+      const imgUrl = getActiveImageUrl(state.currentDay);
+      const imgWrapper = document.getElementById("menuImageWrapper");
+      const imgEl = document.getElementById("menuImageEl");
+      const imgLink = document.getElementById("menuImageLink");
+      if (imgUrl) {
+        imgLink.href = imgUrl;
+        if (imgEl.getAttribute("src") !== imgUrl) {
+          imgWrapper.classList.add("hidden"); // 等待 onload 成功後自動顯示
+          imgEl.src = imgUrl;
+        } else if (imgEl.complete && imgEl.naturalWidth > 0) {
+          imgWrapper.classList.remove("hidden");
+        }
+      } else {
+        imgEl.removeAttribute("src");
+        imgWrapper.classList.add("hidden");
       }
 
       // 分頁按鈕與訂單數
@@ -571,7 +705,6 @@
         return;
       }
 
-      // 檢查該點餐人在本場次是否已有訂單
       const existingOrders = state.orders.filter(o => o.day === state.currentDay && o.userName.trim() === userName);
       if (existingOrders.length > 0) {
         document.getElementById("dupUserName").textContent = userName;
@@ -615,7 +748,7 @@
           method: "POST",
           body: JSON.stringify({
             action: "addOrders",
-            mode: mode, // "replace" 覆蓋舊單 或 "append" 加點
+            mode: mode,
             day: state.currentDay,
             userName,
             note,
@@ -797,7 +930,6 @@
     // 團主密碼預先驗證 + JSON 檔案匯入 + 6 場次管理
     // ==========================================
     function requestAdminAccess() {
-      // 若本次開網頁已經驗證過密碼，直接開啟管理後台
       if (verifiedAdminPin) {
         openAdminModal();
         return;
@@ -867,9 +999,12 @@
             alert("⚠️ 匯入的 JSON 檔案格式不符！必須包含 name (店名) 與 items (餐點陣列)。");
             return;
           }
-          // 自動填入 JSON 文字框並將下拉選單切換為 custom
           document.getElementById("adminTemplateSelect").value = "custom";
           document.getElementById("adminCustomJson").value = JSON.stringify(parsed, null, 2);
+          if (parsed.imageUrl) {
+            document.getElementById("adminImageUrl").value = parsed.imageUrl;
+            state.config[state.editingSlot].imageUrl = parsed.imageUrl;
+          }
           state.config[state.editingSlot].templateKey = "custom";
           state.config[state.editingSlot].customMenu = parsed;
           hintEl.textContent = `✅ 已成功匯入「${parsed.name}」（共 ${parsed.items.length} 道品項），請按下方儲存！`;
@@ -883,13 +1018,16 @@
       reader.readAsText(file, "UTF-8");
     }
 
-    // 下載目前編輯場次的菜單為 .json 檔案（方便團主修改或備份成模板檔案）
+    // 下載目前編輯場次的菜單為 .json 檔案
     function downloadCurrentMenuJson() {
       const rawText = document.getElementById("adminCustomJson").value.trim();
       let menuObj = getActiveMenu(state.editingSlot);
       if (rawText) {
         try { menuObj = JSON.parse(rawText); } catch (e) {}
       }
+      const imgUrl = document.getElementById("adminImageUrl").value.trim();
+      if (imgUrl) menuObj.imageUrl = imgUrl;
+
       const blob = new Blob([JSON.stringify(menuObj, null, 2)], { type: "application/json;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -897,7 +1035,6 @@
       link.click();
     }
 
-    // 當手動編輯 JSON 文字框時，自動將選單切換為「使用自訂 JSON」
     function onCustomJsonManualInput() {
       document.getElementById("adminTemplateSelect").value = "custom";
     }
@@ -944,6 +1081,7 @@
 
       slotConf.visible = document.getElementById("adminSlotVisible").checked;
       slotConf.label = labelEl.value.trim() || slotConf.label;
+      slotConf.imageUrl = (document.getElementById("adminImageUrl")?.value || "").trim();
       slotConf.templateKey = document.getElementById("adminTemplateSelect").value;
       slotConf.closed = document.getElementById("adminToggleCloseBtn").dataset.closed === "true";
 
@@ -964,6 +1102,7 @@
       const slotConf = state.config[state.editingSlot];
       document.getElementById("adminSlotVisible").checked = !!slotConf.visible;
       document.getElementById("adminDayLabel").value = slotConf.label;
+      document.getElementById("adminImageUrl").value = slotConf.imageUrl || "";
       document.getElementById("adminTemplateSelect").value = slotConf.templateKey;
       document.getElementById("adminCustomJson").value = (slotConf.templateKey === "custom" && slotConf.customMenu)
         ? JSON.stringify(slotConf.customMenu, null, 2)
@@ -985,10 +1124,19 @@
       renderAdminSlotSelector();
     }
 
+    function onAdminImageInput() {
+      state.config[state.editingSlot].imageUrl = document.getElementById("adminImageUrl").value.trim();
+    }
+
     function onTemplateSelectChange() {
       const val = document.getElementById("adminTemplateSelect").value;
       if (val !== "custom" && RESTAURANT_TEMPLATES[val]) {
-        document.getElementById("adminCustomJson").value = JSON.stringify(RESTAURANT_TEMPLATES[val], null, 2);
+        const tpl = RESTAURANT_TEMPLATES[val];
+        document.getElementById("adminCustomJson").value = JSON.stringify(tpl, null, 2);
+        if (tpl.imageUrl) {
+          document.getElementById("adminImageUrl").value = tpl.imageUrl;
+          state.config[state.editingSlot].imageUrl = tpl.imageUrl;
+        }
       }
     }
 
